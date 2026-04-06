@@ -72,7 +72,7 @@ Challenger와 Executor는 **병렬 실행** 가능.
 
 ### codex
 ```bash
-node "C:/Users/WINTEK/.claude/plugins/marketplaces/openai-codex/plugins/codex/scripts/codex-companion.mjs" task --fresh "<프롬프트>"
+node "C:/Users/cho/.claude/plugins/marketplaces/openai-codex/plugins/codex/scripts/codex-companion.mjs" task --fresh "<프롬프트>"
 ```
 - codex:codex-rescue 서브에이전트 사용
 - 매 라운드 `--fresh`로 새 스레드
@@ -136,7 +136,7 @@ Collapse 판별:
 ## 에이전트 정의 참조
 
 상세 역할 정의는 아래 파일 참조:
-- `C:\Users\WINTEK\Desktop\Personal\.claude\agents\executor.md`
-- `C:\Users\WINTEK\Desktop\Personal\.claude\agents\challenger.md`
-- `C:\Users\WINTEK\Desktop\Personal\.claude\agents\arbiter.md`
-- `C:\Users\WINTEK\Desktop\Personal\.claude\agents\orchestrator.md`
+- `C:\Users\cho\Desktop\Project\multi-agent-adversarial-verification\agents\executor.md`
+- `C:\Users\cho\Desktop\Project\multi-agent-adversarial-verification\agents\challenger.md`
+- `C:\Users\cho\Desktop\Project\multi-agent-adversarial-verification\agents\arbiter.md`
+- `C:\Users\cho\Desktop\Project\multi-agent-adversarial-verification\agents\orchestrator.md`
