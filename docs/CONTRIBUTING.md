@@ -4,10 +4,15 @@
 
 ## 실험 기록 작성
 
-### 파일 위치
+### 폴더 구조
 
 ```
-docs/experiments/YYYY-MM-DD-<주제>.md
+docs/experiments/YYYY-MM-DD-<주제>/
+├── README.md              # 실험 기록 본문 (결론 → 설계 → 리서치)
+└── improvements/
+    ├── 01-<개선사항>.md
+    ├── 02-<개선사항>.md
+    └── ...
 ```
 
 ### 문서 구조 (두괄식)
@@ -73,7 +78,7 @@ docs/experiments/YYYY-MM-DD-<주제>.md
 ### 파일 위치
 
 ```
-docs/improvements/<번호>-<이름>.md
+docs/experiments/YYYY-MM-DD-<주제>/improvements/<번호>-<이름>.md
 ```
 
 ### 문서 구조
@@ -120,11 +125,8 @@ docs/improvements/<번호>-<이름>.md
 ```markdown
 ### 실험 기록
 
-- **[새 실험](docs/experiments/YYYY-MM-DD-<주제>.md)** — 요약
-
-### 기술적 개선 사항
-
-- [새 개선](docs/improvements/<번호>-<이름>.md) — 한줄 설명
+- **[새 실험](docs/experiments/YYYY-MM-DD-<주제>/)** — 요약
+  - [개선1](docs/experiments/YYYY-MM-DD-<주제>/improvements/<번호>-<이름>.md) — 한줄 설명
 ```
 
 ---
