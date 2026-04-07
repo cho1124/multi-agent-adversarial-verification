@@ -1,0 +1,10 @@
+{
+  "name": "adversarial-verify",
+  "version": "1.0.0",
+  "description": "멀티 에이전트 적대적 검증 시스템. Executor(제안) vs Challenger(반박) vs Arbiter(판정)로 설계를 검증합니다.",
+  "author": {
+    "name": "조영준 (cho1124)"
+  },
+  "license": "MIT",
+  "keywords": ["adversarial", "verification", "multi-agent", "dialectics", "collapse-detection"]
+}

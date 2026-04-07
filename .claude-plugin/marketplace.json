@@ -1,0 +1,24 @@
+{
+  "name": "adversarial-verification",
+  "owner": {
+    "name": "조영준 (cho1124)",
+    "email": "cho1124@github.com"
+  },
+  "metadata": {
+    "description": "멀티 에이전트 적대적 검증 시스템 — 변증법 기반 AI 에이전트 오케스트레이션",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "adversarial-verify",
+      "description": "3개 모델(Executor/Challenger/Arbiter)이 설계를 적대적으로 검증하는 시스템. 프레임 전환 검증, Collapse 감지, 독립 체크리스트 포함.",
+      "version": "1.0.0",
+      "author": {
+        "name": "조영준 (cho1124)"
+      },
+      "source": "./plugins/adversarial-verify",
+      "category": "quality",
+      "tags": ["adversarial", "verification", "multi-agent", "code-review", "dialectics"]
+    }
+  ]
+}
