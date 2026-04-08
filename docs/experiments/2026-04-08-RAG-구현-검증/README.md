@@ -1,84 +1,158 @@
 # RAG 시스템 2차 구현 검증 실험 (2026-04-08)
 
-> 1차 설계 검증(2026-04-06)에서 확정된 RAG 설계를 실제 구현한 interview-wiki-rag의 아키텍처 정합성 + 비용 제로 공개 배포 전략 검증
+> 1차 설계 검증(2026-04-06)에서 확정된 RAG 설계를 실제 구현한 interview-wiki-rag의 아키텍처 정합성 + 비용 제로 공개 배포 전략 검증. **3모델 적대적 검증 (Claude/Codex/Gemini).**
 
 ---
 
 ## 결론
 
-### 실무 결론: "설계와 구현 사이에는 반드시 갭이 존재하며, 그 갭은 적대적 검증으로만 가시화된다"
+### 실무 결론: "설계-구현 괴리는 3모델 검증에서 2.5배 더 많이 드러난다"
 
-| 지표 | 1차 설계 검증 (2026-04-06) | 2차 구현 검증 (2026-04-08) |
-|------|---------------------------|---------------------------|
-| 검증 대상 | 설계 (아직 코드 없음) | 실제 구현 코드 (interview-wiki-rag) |
-| 구조적 결함 | 설계 모순 47건 | **구현 결함 11건** (설계-구현 괴리 포함) |
-| VALID 비율 | 98% (46/47) | **91%** (10/11) |
-| CRITICAL 발견 | 청크 ID 7번 재설계 | **벡터 차원 SQL/Config 불일치** (런타임 크래시) |
-| 핵심 기여 | 설계 품질 근본 향상 | **구현 누락·변질 식별 + 배포 전략 구체화** |
+| 지표 | 단일모델 (Claude 3역할) | 3모델 (Claude/Codex/Gemini) |
+|------|----------------------|---------------------------|
+| 라운드 | 7R | **7R** (동일) |
+| 모순 제기 | 11건 | **40건** (+263%) |
+| VALID | 10 (91%) | **39 (97.5%)** |
+| WEAK | 1 (9%) | **1 (2.5%)** |
+| CRITICAL 발견 | 차원 불일치 1건 | **차원 불일치 + match_chunks 삭제 + citation 비강제 + 캐시 미연결 + 라우터 SPOF** 5건 |
+| 단일모델 미발견 | — | **30건** (C2,C3,C5,C6,C8,C11~C25 + S2 C7,C10~C15) |
 
-**핵심:** 1차에서 "3계층 동시 무효화"를 설계했지만, 구현은 `invalidate_all()` 한 줄. "sufficiency gate"를 설계했지만, 구현은 `max(score)` 하나만 체크. 설계 문서가 아무리 좋아도 구현에서 변질되는 부분은 코드를 직접 검증해야만 드러난다.
+**핵심:** 단일모델은 "명백한 수치 불일치"(차원 384 vs 1536)는 찾았지만, "코드 경로 분석"(match_chunks 삭제, citation 비강제, 캐시 무효화 미연결)은 놓쳤다. Codex(GPT-5.4)가 코드를 직접 읽고 행 번호까지 인용하며 반박한 것이 결정적 차이.
+
+### 단일모델 대비 3모델이 추가로 발견한 핵심 결함
+
+| # | 결함 | 단일모델 | 3모델 | 차이 |
+|---|------|---------|------|------|
+| 1 | v3 SQL에서 match_chunks 삭제 → quiz/explain/compare 깨짐 | 미발견 | **C2 VALID** | Codex가 SQL 파일 직접 읽어서 발견 |
+| 2 | search 노드가 agentic loop이 아닌 단순 생성기 | 미발견 | **C3 VALID** | 도구 바인딩 vs 실제 tool_calls 처리 구분 |
+| 3 | 캐시 무효화가 인덱싱 파이프라인에 미연결 | "전역 flush"만 지적 | **C5 VALID** | store_chunks()에서 호출 자체가 없음 |
+| 4 | citation validation이 비강제 (로그 수준) | 미발견 | **C6 VALID** | validate→재생성/거절 로직 부재 |
+| 5 | 보호 장치가 search에만 적용 | 미발견 | **C8 VALID** | quiz/explain/compare에 gate/citation 없음 |
+| 6 | 라우터 JSON 파싱 fallback 없음 | 미발견 | **C11 VALID** | SPOF — 전체 그래프 중단 |
+| 7 | 라우터 semantic validation 없음 | 미발견 | **C16 VALID** | agent_type="foo" → KeyError |
+| 8 | P1 항목 병렬 수정 불가 (강결합) | 미발견 | **C17 VALID** | workflow.py 196~223 핫스팟 공유 |
+| 9 | L1/L2 캐시 키에 설정 미반영 | 미발견 | **C18,C19 VALID** | threshold 변경해도 30분/1시간 지연 |
+| 10 | Supabase Edge Functions 이중 규칙 | "이중 구현" 정도 | **C20 VALID** | gate 기준 0.3/0.5 vs 0.5/0.7 정량 비교 |
+| 11 | _run_agent() 1회 왕복 제한 | 미발견 | **C21 VALID** | while loop 아닌 공통 런타임 결함 |
+| 12 | L3 캐시 키 sorted vs 인용번호 점수순 | 미발견 | **C14 VALID** | correctness bug, P2→P1 상향 |
+| 13 | topic_lookup/relation_lookup Supabase 직접 조회 | 미발견 | **S2-C7 VALID** | 벡터만 로컬화해도 데이터 원본은 유료 |
+| 14 | auto-detect 규칙 모호 (키 조합별 깨짐) | 미발견 | **S2-C13 VALID** | Anthropic만 있으면 임베딩 깨짐 |
 
 ### 검증된 것
 
-1. **설계-구현 정합성 검증이 가능하다** — 1차 설계 문서와 실제 코드를 대조하여 변질·누락을 구조적으로 발견
-2. **비용 제로 전환의 현실적 경로가 존재한다** — ChromaDB + rank_bm25 + RRF + Ollama로 유료 API 완전 대체 가능
-3. **단일 권장 경로가 3-tier보다 현실적이다** — 조합 폭발 문제를 Challenger가 지적, 단일 경로 + 옵션 fallback으로 수렴
-4. **배포 단계화(개발자→준개발자→비개발자)가 필요하다** — "누구나 사용"의 범위를 명확히 정의해야 함
+1. **3모델 검증이 단일모델 대비 2.5배 더 많은 결함을 발견한다** — 동일 라운드(7R)에서 11건→40건
+2. **Codex의 코드 직접 읽기가 결정적** — 행 번호 인용, SQL 파일 교차 대조, 호출 경로 추적
+3. **Gemini의 대칭적 판정이 품질을 보장** — Challenger 과장 1건(C25)을 WEAK로 걸러냄
+4. **의존성 그래프 기반 수정 순서가 합의됨** — P0→P1-A(캐시)→P1-B(state)→P1-C(로직)→P1-D(횡단)→P2
 
 ### 검증되지 않은 것 (한계)
 
-1. **로컬 모델 citation 준수율 미검증** — gemma2:9b가 `[1]`, `[2]` 인용 형식을 안정적으로 생성하는지 실험 필요
-2. **RRF hybrid 검색 품질 미검증** — PostgreSQL hybrid RPC 대비 ChromaDB+rank_bm25+RRF 조합의 retrieval 성능 비교 실험 부재
-3. **단일 세션 검증** — Executor/Challenger/Arbiter 모두 Claude Opus 4.6 단일 모델 (멀티모델 분산 검증 아님)
-4. **재현성** — 온도/시드 미고정
+1. **구현 검증 미수행** — 결함 식별만 완료, 실제 수정 코드는 아직 작성하지 않음
+2. **retrieval 품질 비교 미수행** — 로컬 스택(ChromaDB+RRF) vs Supabase(pgvector+BM25) 성능 비교 실험 부재
+3. **로컬 LLM citation 준수율 미검증** — gemma2:9b가 `[1]` 형식을 안정적으로 생성하는지 실험 필요
 
 ---
 
-## 검증 대상
+## 요구사항 점검
 
-**리포지토리**: [cho1124/interview-wiki-rag](https://github.com/cho1124/interview-wiki-rag)
+### 1. 무료인가?
 
-1차 적대적 검증(2026-04-06)에서 확정된 RAG 설계를 면접위키 데이터 기반으로 실제 구현한 시스템. LangGraph 멀티에이전트 + Supabase pgvector + OpenAI embedding + 3계층 캐시.
+**현재: 아니오. 계획: 가능하지만 구현 필요.**
 
-**커밋**: `225cdb3` (feat: 면접위키 RAG 시스템 — 적대적 검증 설계 기반 구현)
+| 구성요소 | 현재 | 비용 제로 계획 | 상태 |
+|----------|------|-------------|------|
+| Embedding | OpenAI text-embedding-3-small (~$18/월) | gte-multilingual-base (로컬) | 미구현 |
+| LLM | gpt-4o-mini + claude-sonnet (~$1.4/월) | Ollama gemma2:9b (로컬) | 미구현 |
+| Vector DB | Supabase pgvector ($0~25/월) | ChromaDB (로컬) | 미구현 |
+| BM25 | PostgreSQL tsvector | rank_bm25 또는 SQLite FTS5 | 미구현 |
+| **합계** | **$20~45/월** | **$0** | **미구현** |
+
+**검증에서 확인된 추가 작업:**
+- config.py에 `mode=cloud|local` 명시적 설정 추가 (auto-detect는 보조)
+- 6개 어댑터(source/vector/embedding/LLM/BM25/metadata) 구현 필요
+- migration/reindex 스크립트 필요
+- 차원 3중 충돌(1536/384/768) 통일
+
+### 2. 다른 사용자들도 쉽게 접근할 수 있는가?
+
+**현재: 아니오.**
+
+| 접근 방법 | 상태 | 문제 |
+|----------|------|------|
+| CLI (`scripts/chat.py`) | 존재 | 개발자만 가능, API 키 필수 |
+| Supabase Edge Functions | 존재 | 별도 Supabase 프로젝트 필요 |
+| 웹 UI (Gradio/Streamlit) | **미구현** | Dockerfile도 없음 |
+| Docker Compose | **미구현** | — |
+| HuggingFace Spaces | **미구현** | Ollama 서빙 재설계 필요 |
+
+**검증에서 확정된 배포 로드맵:**
+- Phase 1 (개발자): pip install + CLI + single-folder local-first
+- Phase 2 (준개발자): Docker Compose + Gradio 웹 UI
+- Phase 3 (비개발자): HF Spaces / 호스팅
+
+### 3. 프론트엔드 파트 개발 했는가?
+
+**아니오. 전혀 없음.**
+
+현재 진입점:
+- `scripts/chat.py` — Python CLI (input() 루프)
+- `supabase/functions/chat/index.ts` — Edge Function (API endpoint)
+
+웹 UI, 모바일, 데스크톱 앱 모두 미구현. Phase 2에서 Gradio/Streamlit 계획.
+
+### 4. 추가적인 보안 이슈 혹은 논리의 허점?
+
+**있음. 검증에서 발견된 항목:**
+
+| # | 이슈 | 심각도 | 상태 |
+|---|------|--------|------|
+| 1 | **Prompt Injection** — 사용자 쿼리가 필터링 없이 LLM에 직접 전달 | HIGH | 미수정 |
+| 2 | **라우터 SPOF** — JsonOutputParser 예외처리 없음 (C11) + semantic validation 없음 (C16) | CRITICAL | 미수정 |
+| 3 | **Citation 비강제** — 검증 결과를 계산만 하고 재생성/거절 안 함 (C6) | HIGH | 미수정 |
+| 4 | **캐시 정합성** — L1 키에 model/complexity 미반영 → 잘못된 응답 반환 (C23) | HIGH | 미수정 |
+| 5 | **Edge Functions 이중 규칙** — Python과 다른 gate 기준(0.3/0.5 vs 0.5/0.7) (C20) | MEDIUM | 폐기 예정 |
+| 6 | **L3 캐시 인용 오매핑** — sorted(chunk_ids) vs 점수순 인용번호 (C14) | HIGH | 미수정 |
+
+### 5. 기존 면접위키 DB에서 정상적으로 성능 이슈를 개선했는가?
+
+**부분적. 설계는 있지만 구현이 변질/누락.**
+
+| 설계 (1차 검증) | 구현 상태 | 검증 결과 |
+|----------------|----------|----------|
+| 3계층 캐시로 비용 절감 | 구현됨 (in-memory dict) | **C4**: 재시작 시 소멸, 멀티프로세스 공유 없음 |
+| 3계층 동시 무효화 | `invalidate_all()` 한 줄 | **C5**: 파이프라인에 연결 안 됨 |
+| Sufficiency gate 2단계 | `max(score)` 하나만 | **C7,C13**: gate-검색 threshold 미분리 |
+| Hybrid search (vec+BM25) | Supabase RPC 가중합 | **C9**: BM25 정규화 없이 실효 가중치 무의미 |
+| 청크 ID 안정성 (content_hash) | 구현됨 | 정상 작동 |
+| 멀티에이전트 라우팅 | 구현됨 (router→4 agent) | **C2,C3**: v3 RPC 깨짐 + search는 생성기 |
+| 멀티턴 대화 | state에 선언만 | **C15,C24**: 실제 messages 무시, 횡단 변경 필요 |
 
 ---
 
 ## 실험 환경
 
-| 역할 | 모델 | 호출 방식 |
-|------|------|----------|
-| Executor | Claude Opus 4.6 | 메인 세션 |
-| Challenger | Claude Opus 4.6 | 메인 세션 (자기 반박) |
-| Arbiter | Claude Opus 4.6 | 메인 세션 (자기 판정) |
+| 역할 | 모델 | 호출 방식 | 버전 |
+|------|------|----------|------|
+| Executor | Claude Opus 4.6 | 메인 세션 | claude-opus-4-6 |
+| Challenger | **Codex GPT-5.4** | codex exec --ephemeral | codex-cli 0.118.0 |
+| Arbiter | **Gemini 3 Pro** | gemini CLI | gemini-cli 0.25.1 |
 
-**참고**: 이번 실험은 단일 모델이 3역할을 수행. 멀티모델 분산 검증이 아님. 1차 실험 대비 편향 위험 증가.
-
----
-
-## 소주제
-
-2개 소주제를 순차 검증:
-
-1. **현재 아키텍처 구조 검증** — 설계-구현 정합성, 구조 결함, 프로덕션 준비도
-2. **비용 제로 + 공개 배포 전략** — 유료 API 의존 제거, 누구나 쓸 수 있는 구조
+**검증 대상**: [cho1124/interview-wiki-rag](https://github.com/cho1124/interview-wiki-rag) 커밋 `225cdb3`
 
 ---
 
 ## 전체 결과 요약
 
-| 항목 | 소주제1: 아키텍처 검증 | 소주제2: 비용 제로 배포 |
-|------|----------------------|----------------------|
-| 라운드 | 3R | 4R |
-| 총 모순 제기 | 8건 | 11건 (누적) |
-| VALID | 8 (100%) | 10 (91%) |
-| WEAK | 0 | 2 (9%) |
-| INVALID | 0 | 0 |
-| Collapse | 없음 | 없음 |
-| 프레임 전환 감지 | 0회 | 0회 |
-| 종료 방식 | rational_consensus | rational_consensus (Challenger 자기 범위 이탈 인정) |
-
-**합계: 7라운드, 11건 모순 제기, 10 VALID / 2 WEAK / 0 INVALID, Collapse 0회**
+| 항목 | 소주제1: 아키텍처 | 소주제2: 비용 제로 배포 | 합계 |
+|------|-----------------|---------------------|------|
+| 라운드 | 5R | 2R | **7R** |
+| 총 모순 제기 | 25건 | 15건 | **40건** |
+| VALID | 24 (96%) | 15 (100%) | **39 (97.5%)** |
+| WEAK | 1 (4%) | 0 | **1 (2.5%)** |
+| INVALID | 0 | 0 | **0** |
+| Collapse | 없음 | 없음 | **없음** |
+| 프레임 전환 감지 | 0회 | 0회 | **0회** |
+| 종료 방식 | conditional_consensus | conditional_consensus | |
 
 ---
 
@@ -86,54 +160,48 @@
 
 ### 초기 제안 (Executor)
 
-interview-wiki-rag는 1차 적대적 검증에서 확정된 설계를 기반으로 구현되어 있으며, 기본 완성도를 갖추었다:
-
-- 멀티에이전트 (router → search/quiz/explain/compare)
-- 3계층 캐시 (L1 쿼리, L2 검색, L3 생성)
-- Sufficiency Gate + Citation Validation으로 환각 방지
-- Hybrid Search (0.7 vector + 0.3 BM25)
+멀티에이전트(router→search/quiz/explain/compare), 3계층 캐시, Sufficiency Gate + Citation, Hybrid Search가 구현되어 있으며, RAG 시스템으로서 기본 완성도를 갖추었다.
 
 ### 라운드별 진행
 
-| Round | 모순 제기 | VALID | 핵심 쟁점 |
-|-------|----------|-------|-----------|
-| R1 | 5건 | 5 | 벡터 차원 불일치(CRITICAL), 토큰 추정 ÷3, Sufficiency Gate 단일값, 캐시 전역 flush, 도구 패턴 불균일 |
-| R2 | 0건 (반박 3건) | 3 | Executor "점진적 수정 가능" 주장에 대해 — SQL 마이그레이션 필요, 임계값 튜닝 문제, 캐시 역인덱스 필요 |
-| R3 | 3건 | 3 | 동시성 부재, Prompt Injection 취약점, Python/Supabase 이중 구현 |
+| Round | 모순 | VALID | WEAK | 핵심 쟁점 |
+|-------|------|-------|------|-----------|
+| R1 | 10건 | 10 | 0 | 차원 불일치(C1), match_chunks 삭제(C2), search 비에이전트(C3), 캐시 dict(C4), 무효화 미연결(C5), citation 비강제(C6), gate 단일값(C7), search만 보호(C8), BM25 미정규화(C9), 프롬프트 미사용(C10) |
+| R2 | 5건 | 5 | 0 | 라우터 SPOF(C11), citation 강제 주장 논리비약(C12), gate-검색 threshold 미분리(C13), L3 캐시 키 순서(C14), 멀티턴 미구현(C15) |
+| R3 | 6건 | 6 | 0 | 라우터 semantic validation(C16), P1 병렬 수정 불가(C17), L2 캐시 키 설정 미반영(C18), L1 캐시 키 불충분(C19), Edge Functions 이중 규칙(C20), _run_agent 1회 왕복(C21) |
+| R4 | 4건 | 3 | 1 | 의존성 순서 오류(C22), L1 키 complexity 누락(C23), 멀티턴 횡단 변경(C24), 스크립트 문법(C25-WEAK) |
+| R5 | 0건 | — | — | **conditional_consensus** (조건: Phase C가 search+공통 경로 모두 포함) |
 
 ### 핵심 전환점
 
-**R1 — 벡터 차원 SQL/Config 불일치**
+**R1 — Codex가 10건 한꺼번에 제기 (단일모델 대비 +5건)**
 
-가장 치명적인 발견. 1차 설계 검증에서 "bge-m3 1024차원"으로 확정했으나, 구현 과정에서:
-- `setup_v3.sql`: `VECTOR(384)` (gte-small 기준으로 작성)
-- `config.py`: `embedding_dimensions = 1536`, `model = text-embedding-3-small`
+Codex(GPT-5.4)가 모든 Python/SQL 파일을 직접 읽고 행 번호까지 인용하며 반박. 특히:
+- C2: `setup_v3.sql`이 `match_chunks`를 DROP만 하고 재생성하지 않는 것 발견
+- C6: `citation.py`의 validate → workflow.py의 캐시 저장 경로를 추적하여 "비강제" 입증
+- C10: prompts/ 파일 5개 중 실제 로딩은 `search.txt` 1개뿐임을 확인
 
-설계(1024) → 구현(384 vs 1536)으로 **이중 변질**. 런타임에서 반드시 크래시하는 CRITICAL 결함.
+**R3 — 캐시 계층 전체가 공격받음**
 
-**R1 — Sufficiency Gate 단일값 문제**
+C18(L2 키에 retrieval 설정 미반영) + C19(L1 키에 complexity 미반영) + C22(의존성 순서 오류)가 연쇄적으로 제기되어, "P1 수정해도 캐시가 우회한다"는 구조적 문제 확인.
 
-1차 설계에서 "2단계 임계값"으로 확정했으나, 구현에서는 `max(final_score)` 하나만 체크. 1개 고점수 + 4개 0점 → PASS 판정되는 문제. 설계 의도("충분성 검증")와 구현("최고점 통과")이 괴리.
+### 확정된 수정 의존성 그래프
 
-**R2 — "점진적 수정 가능" 기각**
+```
+P0: 차원 통일 + match_chunks + 라우터 validation + 캐시-파이프라인 연결
+  ↓
+P1-Phase A: L1/L2/L3 캐시 키 버전업 (complexity/model/설정 포함) ← 선행
+  ↓
+P1-Phase B: state.py 계약 변경 (messages 기반 횡단)
+  ↓
+P1-Phase C: agentic loop (search + _run_agent 공통) + citation 강제 + gate threshold 분리
+  ↓
+P1-Phase D: 비search 보호 + 멀티턴 (엔트리포인트 포함 횡단)
+  ↓
+P2: 캐시 영속화, BM25 정규화, 프롬프트 통일
+```
 
-Executor가 "기존 구조 유지하면서 점진적으로 고칠 수 있다"고 주장했으나, Challenger가 3건 모두 반박:
-1. SQL 차원 변경 = 인덱스 재생성 + 전체 임베딩 재계산 (마이그레이션)
-2. Sufficiency Gate 복합 판정 = A/B 테스트 프레임워크 부재
-3. 캐시 topic별 무효화 = SHA256 키 구조상 불가 → 역인덱스 필요
-
-### 검증된 구조적 결함 (8건)
-
-| # | 결함 | 심각도 | 1차 설계 대비 | 상세 |
-|---|------|--------|-------------|------|
-| 1 | [벡터 차원 SQL/Config 불일치](improvements/01-벡터차원-불일치.md) | CRITICAL | 설계(1024) → 구현(384 vs 1536) 이중 변질 | 런타임 크래시 |
-| 2 | [토큰 추정 ÷3](improvements/02-토큰추정-결함.md) | HIGH | 설계(tiktoken 예정) → 구현(÷3) | 한국어/영어 혼합 ±50% 오차 |
-| 3 | [Sufficiency Gate 단일값](improvements/03-sufficiency-gate.md) | HIGH | 설계(2단계 임계값) → 구현(max만) | false positive |
-| 4 | [캐시 전역 flush](improvements/04-캐시-전역flush.md) | MEDIUM | 설계(3계층 동시 무효화) → 구현(invalidate_all) | 비용 절감 상쇄 |
-| 5 | 도구 패턴 불균일 | MEDIUM | — | search 직접 호출 vs 나머지 bind_tools |
-| 6 | 동시성 부재 | MEDIUM | — | vector/BM25 병렬화 미구현 |
-| 7 | [Prompt Injection](improvements/05-prompt-injection.md) | HIGH | 설계에서 미다룸 | 사용자 입력 필터링 없음 |
-| 8 | Python/Supabase 이중 구현 | MEDIUM | — | 진입점 불명확 |
+Edge Functions 폐기 확정.
 
 ---
 
@@ -141,127 +209,88 @@ Executor가 "기존 구조 유지하면서 점진적으로 고칠 수 있다"고
 
 ### 초기 제안 (Executor)
 
-모든 유료 API를 로컬 대안으로 교체:
-- OpenAI Embedding → gte-small (로컬)
-- OpenAI/Anthropic LLM → Ollama (로컬)
-- Supabase → ChromaDB (로컬)
-- Docker Compose 원클릭 배포
+모든 유료 API를 로컬 대안(gte-multilingual-base + Ollama + ChromaDB + rank_bm25 + RRF)으로 교체, pip install로 간편 배포.
 
 ### 라운드별 진행
 
-| Round | 모순 제기 | VALID | WEAK | 핵심 쟁점 |
-|-------|----------|-------|------|-----------|
-| R1 | 4건 | 4 | 0 | 임베딩 품질 전파, 로컬 LLM 지시 준수 한계, CPU 추론 60-150초, ChromaDB BM25 미지원 |
-| R2 | 4건 | 4 | 0 | sqlite-vec 미검증, Groq 토큰 제한(분당 1.5회), 3-tier 유지보수 폭발, pip install 환상 |
-| R3 | 3건 | 3 | 0 | BM25 정규화 전략 미명시, 로컬 모델 citation 미검증, 배포 대상 범위 미정의 |
-| R4 | 2건 | 0 | 2 | HF Spaces GPU 2시간 제한(WEAK), 데이터 라이선스(WEAK — 범위 밖) |
-
-### 핵심 전환점
-
-**R1 — "전부 로컬로 바꾸면 된다" 기각**
-
-Executor의 초기 제안("OpenAI→gte-small, LLM→Ollama, DB→ChromaDB")에 대해 Challenger가 4건 전부 VALID 반박:
-1. gte-small(57.8) vs text-embedding-3-small(62.3) MTEB 차이가 전 파이프라인에 누적 전파
-2. Llama 3.1 8B의 citation `[1]` 형식 준수율이 gpt-4o-mini 대비 현저히 낮음
-3. CPU inference 2-5 tok/s → 300토큰 답변에 60-150초 → 서비스 불가
-4. ChromaDB에 BM25 없음 → hybrid search 불가
-
-**R2 — 3-tier 유지보수 폭발**
-
-Executor가 "Tier 1(로컬)/Tier 2(무료API)/Tier 3(유료)"로 수정했으나, Challenger: "3 tier × 3 component = 9 조합 테스트. maintainer 1명이 불가능." → 단일 권장 경로로 수렴.
-
-**R3 — RRF(Reciprocal Rank Fusion)로 수렴**
-
-BM25 점수(0~∞)와 vector 점수(0~1) 정규화 문제를 Challenger가 지적. Executor가 RRF 채택으로 해결:
-```
-rrf_score = 1/(k + rank_vec) + 1/(k + rank_bm25)  # k=60
-```
-순위 기반이므로 점수 스케일 무관. 학계 검증된 방법.
-
-**R4 — 수렴 신호**
-
-Challenger가 "HF Spaces GPU 2시간 제한"과 "데이터 라이선스"를 제기했으나, 스스로 "아키텍처 범위 밖"을 인정. Arbiter도 WEAK 판정 → 핵심 논점 소진 확인.
+| Round | 모순 | VALID | 핵심 쟁점 |
+|-------|------|-------|-----------|
+| R1 | 9건 | 9 | 로컬 분기 없음(C1), auto-detect 미구현(C2), ChromaDB+RRF 코드 없음(C3), 차원 3중 충돌(C4), 이중 경로(C5), requirements 누락(C6), Supabase 데이터 원본 잔존(C7), 배포 파일 없음(C8), HF Spaces 비현실(C9) |
+| R2 | 6건 | 6 | 설정 계약 재정의 필요(C10), Supabase 6곳 결합(C11), single-file→single-folder(C12), auto-detect 모호(C13), BM25 계약 소멸(C14), migration 스크립트 누락(C15) |
 
 ### 확정된 비용 제로 구성
 
-| 구성요소 | 현재 (유료) | 비용 제로 대안 | 근거 |
-|----------|------------|--------------|------|
-| Embedding | OpenAI text-embedding-3-small ($18/월) | gte-multilingual-base (768d, 로컬) | 한국어 특화, Apache 2.0 |
-| LLM | gpt-4o-mini + claude-sonnet | Ollama gemma2:9b-instruct | instruction following 최선 |
-| Vector DB | Supabase pgvector ($0~25/월) | ChromaDB (로컬) | 순수 Python, pip 설치 |
-| BM25 | PostgreSQL tsvector | rank_bm25 (순수 Python) | 외부 의존 없음 |
-| Hybrid merge | SQL RPC (0.7vec + 0.3bm25) | RRF k=60 (Python) | 점수 스케일 무관 |
-| 유료 API | 필수 | `.env` 키 있으면 자동 활성화 | 옵션 |
+| 구성요소 | 현재 (유료) | 확정 대안 |
+|----------|------------|----------|
+| Embedding | OpenAI text-embedding-3-small | gte-multilingual-base (768d, 로컬) |
+| LLM | gpt-4o-mini + claude-sonnet | Ollama gemma2:9b-instruct |
+| Vector DB | Supabase pgvector | ChromaDB (single-folder) |
+| BM25 | PostgreSQL tsvector | SQLite FTS5 또는 rank_bm25 |
+| Hybrid | Supabase RPC 가중합 | RRF k=60 (순위 기반) |
+| 데이터 원본 | Supabase tables | SQLite (로컬) |
+| 설정 모드 | 유료 API 하드코딩 | `mode=cloud\|local` 명시적 설정 |
 
-### 확정된 배포 로드맵
+### Phase 1 최소 요구사항 (확정)
 
-| Phase | 대상 | 형태 | 선결 조건 |
-|-------|------|------|-----------|
-| 1 | 개발자 | `pip install` + CLI | 소주제1 CRITICAL 버그 수정 |
-| 2 | 준개발자 | Docker Compose + 웹 UI (Gradio) | citation 준수 실험 완료 |
-| 3 | 비개발자 | HuggingFace Spaces / 호스팅 | 비용 모델 결정 |
-
----
-
-## 통합 실행 계획
-
-소주제 1(구조 결함) + 소주제 2(비용 제로)에서 도출된 작업을 우선순위 순서로 통합:
-
-| 순서 | 작업 | 근거 | 복잡도 |
-|------|------|------|--------|
-| 1 | 벡터 차원 통일 (config ↔ SQL) | CRITICAL — 다른 모든 작업의 전제 | 중 (마이그레이션) |
-| 2 | tiktoken 토큰 추정 교체 | 답변 품질 직결 | 저 |
-| 3 | 로컬 모델 citation 준수 실험 | 비용 제로 전환의 핵심 리스크 | 중 (실험) |
-| 4 | ChromaDB + rank_bm25 + RRF 구현 | Supabase 의존 제거 | 중 |
-| 5 | Sufficiency Gate 복합 판정 | false positive 감소 | 저-중 |
-| 6 | 캐시 메타데이터 추가 + topic별 무효화 | 비용 효율 | 중 |
-| 7 | Prompt Injection 입력 sanitize | 공개 배포 전 필수 | 저-중 |
-| 8 | Python/Supabase Functions 정리 | 이중 구현 제거 | 저 |
-| 9 | Gradio/Streamlit 웹 UI | Phase 2 배포 | 중 |
+1. local source adapter (SQLite)
+2. local vector adapter (ChromaDB)
+3. local embedding adapter (HuggingFace)
+4. local LLM adapter (Ollama)
+5. local BM25 adapter (FTS5 또는 rank_bm25)
+6. migration/export + reindex 스크립트
+7. `mode=cloud|local` config 설정
+8. requirements.txt 갱신
 
 ---
 
 ## 기술적 개선 사항 (상세)
 
-각 항목은 "문제 → 논의 과정 → 해소 → 개선된 점"을 개별 문서로 기록:
-
-| # | 개선 사항 | 핵심 | 라운드 |
-|---|----------|------|--------|
-| 1 | [벡터 차원 불일치](improvements/01-벡터차원-불일치.md) | SQL(384) vs Config(1536) — 런타임 크래시 | 소주제1, R1 |
-| 2 | [토큰 추정 결함](improvements/02-토큰추정-결함.md) | ÷3 추정 → tiktoken 교체 필요 | 소주제1, R1 |
-| 3 | [Sufficiency Gate](improvements/03-sufficiency-gate.md) | max만 → 복합 판정 (count + median) | 소주제1, R1 |
-| 4 | [캐시 전역 flush](improvements/04-캐시-전역flush.md) | invalidate_all → topic별 무효화 | 소주제1, R1 |
-| 5 | [Prompt Injection](improvements/05-prompt-injection.md) | 입력 필터링 없음 → sanitize 필요 | 소주제1, R3 |
-| 6 | [비용 제로 전환](improvements/06-비용제로-전환.md) | 유료 API → ChromaDB + rank_bm25 + RRF + Ollama | 소주제2, R1~R4 |
-| 7 | [배포 단계화](improvements/07-배포-단계화.md) | 개발자 → 준개발자 → 비개발자 3단계 | 소주제2, R3~R4 |
+| # | 개선 사항 | 핵심 | 라운드 | 단일모델 대비 |
+|---|----------|------|--------|-------------|
+| 1 | [벡터 차원 불일치](improvements/01-벡터차원-불일치.md) | SQL(384) vs Config(1536) CRITICAL | S1-R1 | 동일 발견 |
+| 2 | [토큰 추정 결함](improvements/02-토큰추정-결함.md) | ÷3 → tiktoken | S1-R1 | 동일 발견 |
+| 3 | [Sufficiency Gate](improvements/03-sufficiency-gate.md) | max → 복합 판정 + threshold 분리 | S1-R1,R2 | 3모델이 threshold 분리(C13)까지 추가 발견 |
+| 4 | [캐시 전역 flush](improvements/04-캐시-전역flush.md) | 파이프라인 미연결 + 키 불충분 | S1-R1,R3,R4 | 3모델이 미연결(C5)+키 문제(C18,C19,C22,C23)까지 심화 |
+| 5 | [Prompt Injection](improvements/05-prompt-injection.md) | 입력 sanitize | S1-R1 | 동일 발견 |
+| 6 | [비용 제로 전환](improvements/06-비용제로-전환.md) | 6 어댑터 + FTS5 + migration | S2-R1,R2 | 3모델이 Supabase 6곳 결합(C11)+BM25 소멸(C14) 추가 |
+| 7 | [배포 단계화](improvements/07-배포-단계화.md) | single-folder local-first | S2-R1,R2 | 3모델이 single-file 과장 교정(C12) |
+| 8 | [match_chunks 삭제](improvements/08-match-chunks.md) | v3 SQL DROP 미복원 → quiz/explain/compare 깨짐 | S1-R1 | **3모델만 발견** |
+| 9 | [citation 비강제](improvements/09-citation-비강제.md) | 검증→재생성/거절 로직 부재 | S1-R1,R2 | **3모델만 발견** |
+| 10 | [라우터 SPOF](improvements/10-라우터-SPOF.md) | JSON 파싱 + semantic validation 없음 | S1-R2,R3 | **3모델만 발견** |
+| 11 | [캐시 키 정합성](improvements/11-캐시키-정합성.md) | L1/L2/L3 키에 설정/순서 미반영 | S1-R3,R4 | **3모델만 발견** |
+| 12 | [agentic loop 제한](improvements/12-agentic-loop.md) | search+_run_agent 1회 왕복 | S1-R1,R3 | **3모델만 발견** |
 
 ---
 
-## 1차 설계 검증과의 비교
+## 단일모델 실험과의 비교
 
-| 영역 | 1차 설계 (2026-04-06) | 2차 구현 (2026-04-08) |
-|------|---------------------|---------------------|
-| 검증 대상 | 설계 문서 (코드 없음) | 실제 구현 코드 |
-| 모델 구성 | 3모델 (Claude/Codex/Gemini) | 단일 모델 (Claude 3역할) |
-| 라운드 | 21R | 7R |
-| 모순 제기 | 47건 | 11건 |
-| VALID | 98% | 91% |
-| 핵심 발견 | 설계 모순 (청크 ID 7번 재설계) | 설계-구현 괴리 (차원 불일치, gate 변질) |
-| 도출물 | 확정 설계서 | 실행 계획 (9단계) + 비용 제로 구성 |
+| 영역 | 단일모델 (Claude 3역할) | 3모델 (Claude/Codex/Gemini) |
+|------|----------------------|---------------------------|
+| Challenger 품질 | 구조적 모순 위주 | **코드 행 번호 인용 + SQL 교차 대조 + 호출 경로 추적** |
+| Arbiter 품질 | 자기 판정 (편향 위험) | **Gemini 독립 판정, C25 WEAK 필터링** |
+| 발견 깊이 | 표면적 (수치 불일치, 패턴 불균일) | **심층적 (캐시 우회, citation 비강제, 의존성 순서)** |
+| 합의 품질 | 일반적 수정 방향 | **의존성 그래프 + Phase A~D + 조건부 합의** |
+| VALID 비율 | 91% | **97.5%** (Challenger 반박 품질 향상) |
+| 작업량 산정 | 9단계 리스트 | **P0 4건 + P1 4-Phase + P2 3건 + 6 어댑터** |
 
-### 비교 결론
+### 핵심 차이: Codex의 코드 직접 읽기
 
-1차는 "**어떻게 만들어야 하는가**"를, 2차는 "**만든 것이 설계와 맞는가 + 어떻게 배포할 것인가**"를 검증. 두 검증은 상호 보완적이며, 2차에서 발견된 설계-구현 괴리는 1차만으로는 절대 발견할 수 없었던 문제들.
+단일모델 실험에서 Claude가 3역할을 했을 때는 "코드를 한 번 읽고 기억에 의존"하는 구조. Codex는 **매 라운드마다 코드를 새로 읽고** 행 번호를 인용하며 반박하여:
+- `setup_v3.sql`의 DROP 후 미복원 (C2)
+- `workflow.py:196~223`의 핫스팟 공유 (C17)
+- `cache/query_cache.py`의 키 생성 로직 (C19, C23)
+- `supabase/functions/chat/index.ts`의 하드코딩 기준값 (C20)
+
+등 단일모델이 놓친 14건의 결함을 추가 발견.
 
 ---
 
 ## 시스템 검증 결과
 
-이번 실험에서의 적대적 검증 시스템 자체 평가:
-
 | 구조 | 작동 여부 | 근거 |
 |------|----------|------|
-| 단일 모델 3역할 | **제한적 작동** | 편향 위험 증가하나, 구조적 결함 발견에는 유효 |
-| 코드 기반 검증 | **작동** | 설계 문서 없이 코드만으로 결함 식별 가능 확인 |
-| Challenger 자기 제한 | **작동** | R4에서 Challenger가 범위 이탈 자인 → 수렴 판정 |
-| 설계-구현 대조 | **작동** | 1차 설계 확정안과 실제 코드의 괴리 8건 중 CRITICAL 1건 발견 |
+| 3모델 분산 검증 | **작동** | Codex 코드 직접 읽기 + Gemini 독립 판정 = 단일모델 대비 +263% 발견 |
+| Challenger 코드 분석 | **탁월** | 매 라운드 파일 재스캔, 행 번호 인용, SQL 교차 대조 |
+| Arbiter 대칭성 | **작동** | C25 WEAK 판정 (Challenger 과장 필터링) |
+| conditional_consensus | **작동** | 양 소주제 모두 조건부 합의로 건설적 종료 |
+| Collapse 방지 | **해당 없음** | Executor가 매 라운드 모순 전부 인정 (방어 시도 없음) |

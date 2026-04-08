@@ -119,14 +119,19 @@ echo "<프롬프트>" | ollama run llama3.1
   - [레이아웃 보존](docs/experiments/2026-04-06-RAG-시스템-검증/improvements/06-레이아웃-보존.md) — 텍스트+레이아웃 동시 추출
   - [비용 통제](docs/experiments/2026-04-06-RAG-시스템-검증/improvements/07-비용-통제.md) — 로컬 우선 ~$15/월
 
-- **[RAG 시스템 2차 구현 검증 (2026-04-08)](docs/experiments/2026-04-08-RAG-구현-검증/)** — 7라운드, 11건 모순, VALID 91%, 설계-구현 괴리 식별 + 비용 제로 전략
+- **[RAG 시스템 2차 구현 검증 (2026-04-08)](docs/experiments/2026-04-08-RAG-구현-검증/)** — 3모델(Claude/Codex/Gemini), 7라운드, 40건 모순, VALID 97.5%
   - [벡터 차원 불일치](docs/experiments/2026-04-08-RAG-구현-검증/improvements/01-벡터차원-불일치.md) — SQL(384) vs Config(1536) CRITICAL
   - [토큰 추정 결함](docs/experiments/2026-04-08-RAG-구현-검증/improvements/02-토큰추정-결함.md) — ÷3 → tiktoken
-  - [Sufficiency Gate](docs/experiments/2026-04-08-RAG-구현-검증/improvements/03-sufficiency-gate.md) — max → 복합 판정
-  - [캐시 전역 flush](docs/experiments/2026-04-08-RAG-구현-검증/improvements/04-캐시-전역flush.md) — invalidate_all → topic별
+  - [Sufficiency Gate](docs/experiments/2026-04-08-RAG-구현-검증/improvements/03-sufficiency-gate.md) — max → 복합 판정 + threshold 분리
+  - [캐시 전역 flush](docs/experiments/2026-04-08-RAG-구현-검증/improvements/04-캐시-전역flush.md) — 파이프라인 미연결 + 키 불충분
   - [Prompt Injection](docs/experiments/2026-04-08-RAG-구현-검증/improvements/05-prompt-injection.md) — 입력 sanitize
-  - [비용 제로 전환](docs/experiments/2026-04-08-RAG-구현-검증/improvements/06-비용제로-전환.md) — ChromaDB + RRF + Ollama
-  - [배포 단계화](docs/experiments/2026-04-08-RAG-구현-검증/improvements/07-배포-단계화.md) — 개발자 → 준개발자 → 비개발자
+  - [비용 제로 전환](docs/experiments/2026-04-08-RAG-구현-검증/improvements/06-비용제로-전환.md) — 6 어댑터 + FTS5 + migration
+  - [배포 단계화](docs/experiments/2026-04-08-RAG-구현-검증/improvements/07-배포-단계화.md) — single-folder local-first
+  - [match_chunks 삭제](docs/experiments/2026-04-08-RAG-구현-검증/improvements/08-match-chunks.md) — v3 DROP 미복원 **(3모델만)**
+  - [citation 비강제](docs/experiments/2026-04-08-RAG-구현-검증/improvements/09-citation-비강제.md) — 검증→재생성 로직 부재 **(3모델만)**
+  - [라우터 SPOF](docs/experiments/2026-04-08-RAG-구현-검증/improvements/10-라우터-SPOF.md) — JSON fallback + semantic validation **(3모델만)**
+  - [캐시 키 정합성](docs/experiments/2026-04-08-RAG-구현-검증/improvements/11-캐시키-정합성.md) — L1/L2/L3 키 불충분 **(3모델만)**
+  - [agentic loop 제한](docs/experiments/2026-04-08-RAG-구현-검증/improvements/12-agentic-loop.md) — 1회 왕복 → while loop **(3모델만)**
 
 - **[전광판 영상 동기화 검증 (2026-04-07)](docs/experiments/2026-04-07-전광판-영상싱크/)** — 7라운드, 42건 모순, VALID 81%, Executor Collapse 감지
   - [단계별 계측](docs/experiments/2026-04-07-전광판-영상싱크/improvements/01-단계별-계측.md) — 290ms 고정 → 5단계 분해
