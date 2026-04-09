@@ -135,6 +135,8 @@ echo "<프롬프트>" | ollama run llama3.1
   - [캐시 키 정합성](docs/experiments/2026-04-08-RAG-구현-검증/improvements/11-캐시키-정합성.md) — L1/L2/L3 키 불충분 **(3모델만)**
   - [agentic loop 제한](docs/experiments/2026-04-08-RAG-구현-검증/improvements/12-agentic-loop.md) — 1회 왕복 → while loop **(3모델만)**
 
+- **[RAG 3차 배포 검증 + 4차 런타임 검증 (2026-04-09)](docs/experiments/2026-04-09-RAG-배포-검증/)** — 3차: 2라운드, 3건 모순, 미해소 2건 / 4차: 9 TC 자동 실행, 7 PASS, 1 WARN(Llama 8B 인용 미준수)
+
 - **[전광판 영상 동기화 검증 (2026-04-07)](docs/experiments/2026-04-07-전광판-영상싱크/)** — 7라운드, 42건 모순, VALID 81%, Executor Collapse 감지
   - [단계별 계측](docs/experiments/2026-04-07-전광판-영상싱크/improvements/01-단계별-계측.md) — 290ms 고정 → 5단계 분해
   - [상태머신](docs/experiments/2026-04-07-전광판-영상싱크/improvements/02-상태머신.md) — SYNCED/DRIFTING/DESYNCED 3단계
