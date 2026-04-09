@@ -81,7 +81,42 @@ Challenger와 Executor는 **병렬 실행** 가능.
 배포 과정에서 발견된 결함을 자동 확인하는 TC.
 예: "Tailwind 스타일 미적용" → `TC: 페이지 로드 후 헤더 배경색 존재 확인`
 
-출력 포맷:
+#### 검증 모듈 카탈로그
+
+모순의 성격에 따라 적절한 검증 모듈을 선택한다:
+
+| 모듈 | 검증 대상 | 자동화 | 적용 예시 |
+|------|----------|--------|----------|
+| `assert_http` | HTTP 상태코드, 헤더 | 완전 자동 | API 엔드포인트 존재, 응답 코드 |
+| `assert_contains` | 응답 내 키워드 포함 | 완전 자동 | 에러 메시지 포함, 필수 필드 존재 |
+| `assert_not_contains` | 응답 내 금지 패턴 부재 | 완전 자동 | 환각 인용 없음, 민감정보 미노출 |
+| `assert_performance` | 응답 시간, 처리량 | 완전 자동 | p95 지연시간, FPS, 메모리 |
+| `assert_state` | 상태 전이 정합성 | 완전 자동 | 입력→처리→기대 상태, 게임 충돌 판정 |
+| `assert_no_crash` | 크래시/예외 없음 | 완전 자동 | 엣지 입력, 빈 입력, 초과 입력 |
+| `assert_schema` | 출력 구조 일치 | 완전 자동 | JSON 필드, 타입, 필수값 |
+| `assert_llm_judge` | 의미적 품질 판정 | 반자동 | 답변 정확성, 인용 일치, 논리 일관성 |
+| `assert_human_checklist` | 주관적 체감 평가 | 수동 | UX 만족도, 게임 재미, 디자인 적합성 |
+
+#### 모순 → 모듈 매핑 규칙
+
+모순의 type과 target을 분석하여 모듈을 자동 선택한다:
+
+```
+logic_error + API/엔드포인트     → assert_http + assert_schema
+logic_error + 데이터 흐름        → assert_state + assert_contains
+missing_case + 입력 검증         → assert_no_crash + assert_contains
+missing_case + 에러 처리         → assert_http + assert_not_contains
+assumption_flaw + 성능           → assert_performance
+assumption_flaw + 모델 품질      → assert_llm_judge
+side_effect + 보안               → assert_not_contains
+scalability_risk + 부하          → assert_performance
+frame_shift (프레임 전환)        → assert_llm_judge (원래 기준으로 재검증)
+해소된 모순 전체                 → 위 매핑으로 회귀 TC 생성
+UX/체감 관련                     → assert_human_checklist
+```
+
+#### TC 출력 포맷
+
 ```json
 {
   "test_cases": [
@@ -89,20 +124,26 @@ Challenger와 Executor는 **병렬 실행** 가능.
       "id": "TC-01",
       "source": "C-02 (미해소)",
       "category": "edge_case | regression | environment",
-      "description": "테스트 설명",
-      "input": "테스트 입력 (API 호출 등)",
-      "expected": "기대 결과",
-      "severity": "critical | high | medium"
+      "module": "assert_llm_judge",
+      "description": "검색 0건 시 환각 인용 없이 거절 응답",
+      "input": {"endpoint": "/api/chat", "body": {"messages": [{"role": "user", "content": "xyzzy 비존재 토픽"}]}},
+      "criteria": "응답에 [1],[2] 인용이 없거나 '찾을 수 없습니다' 포함",
+      "expected": "pass",
+      "severity": "high"
     }
   ]
 }
 ```
 
-TC는 프로젝트에 맞는 형태로 생성한다:
-- 웹 API → curl/fetch 기반 HTTP 테스트
-- 라이브러리/모듈 → 단위 테스트
-- 인프라 → 헬스체크 스크립트
-- GitHub Actions workflow로 출력 가능
+#### 프로젝트 타입별 TC 실체화
+
+TC 출력을 프로젝트 환경에 맞게 변환한다:
+- **웹 API** → GitHub Actions workflow (curl 기반)
+- **프론트엔드** → Playwright/Cypress E2E 테스트
+- **라이브러리** → pytest / jest 단위 테스트
+- **게임** → 테스트 러너 스크립트 (Unity Test Runner, Unreal Automation)
+- **인프라** → 헬스체크 + 모니터링 알림
+- **LLM 판정 필요** → 별도 평가 스크립트 (골드셋 + LLM judge)
 
 ## 모델별 호출 방법
 
