@@ -1,5 +1,7 @@
 # Multi-Agent Adversarial Verification
 
+> 한국어 | **[English](README.en.md)**
+
 변증법(테제-안티테제-진테제) 구조로 AI 설계를 검증하는 멀티 에이전트 오케스트레이션 시스템
 
 ## 이게 뭔가요?
