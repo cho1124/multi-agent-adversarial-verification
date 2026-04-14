@@ -48,6 +48,8 @@ AI가 코드를 빠르게 짜주는 시대에, **사람의 가치는 "빨리 짜
 | 전광판 영상 동기화 | 04-07 | Claude × 3 | 7 | 42건 | 81% |
 | RAG 2차 구현 검증 | 04-08 | Claude / Codex / Gemini | 7 | 40건 | 97.5% |
 | RAG 3차 배포 + 런타임 | 04-09 | Claude / Codex / Gemini | 2 + 9 TC | 3건 | 7/9 PASS |
+| Blender 3D AI Generator | 04-14 | Claude / Codex / Gemini | 14 | 58건 | 100% |
+| PixelForge 코드검증 | 04-14 | Claude / Codex / Gemini | 6 (4R+Meta+Test) | 30건 | VALID 7건 해소 |
 
 > **RAG 설계 검증에서:** 파이프라인 **3회 재설계**, 핵심 데이터 구조 **7회 변경**, 논점 돌리기 **자동 감지·차단** (Executor Collapse 판별 포함)
 
@@ -204,6 +206,14 @@ echo "<프롬프트>" | ollama run llama3.1
   - [agentic loop 제한](docs/experiments/2026-04-08-RAG-구현-검증/improvements/12-agentic-loop.md) — 1회 왕복 → while loop **(3모델만)**
 
 - **[RAG 3차 배포 검증 + 4차 런타임 검증 (2026-04-09)](docs/experiments/2026-04-09-RAG-배포-검증/)** — 3차: 2라운드, 3건 모순, 미해소 2건 / 4차: 9 TC 자동 실행, 7 PASS, 1 WARN(Llama 8B 인용 미준수)
+
+- **[PixelForge 코드검증 (2026-04-14)](docs/experiments/2026-04-14-PixelForge-Verification/)** — 6라운드(4R+Meta+Test), 30건 모순, VALID 7건 전체 해소, 29개 자동 테스트
+  - [모듈 인터페이스 통일](docs/experiments/2026-04-14-PixelForge-Verification/improvements/01-module-interface.md) — postprocess/generator 함수명·시그니처 통일
+  - [워크플로우 바이패스](docs/experiments/2026-04-14-PixelForge-Verification/improvements/02-workflow-bypass.md) — IP-Adapter/ControlNet 동적 제거 + 재배선
+  - [공유 팔레트](docs/experiments/2026-04-14-PixelForge-Verification/improvements/03-shared-palette.md) — 프레임 간 색상 일관성
+  - [API 계약 정직성](docs/experiments/2026-04-14-PixelForge-Verification/improvements/04-api-contract.md) — non-square ValueError (Meta VALID)
+  - [Unity 연동](docs/experiments/2026-04-14-PixelForge-Verification/improvements/05-unity-integration.md) — Newtonsoft.Json + padding 좌표
+  - [테스트 자동화](docs/experiments/2026-04-14-PixelForge-Verification/improvements/06-test-automation.md) — Mock ComfyUI + E2E + 에러 경로 + 픽셀 검증
 
 - **[전광판 영상 동기화 검증 (2026-04-07)](docs/experiments/2026-04-07-전광판-영상싱크/)** — 7라운드, 42건 모순, VALID 81%, Executor Collapse 감지
   - [단계별 계측](docs/experiments/2026-04-07-전광판-영상싱크/improvements/01-단계별-계측.md) — 290ms 고정 → 5단계 분해
