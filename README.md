@@ -3,9 +3,9 @@
 > 한국어 | **[English](README.en.md)**
 
 ![License](https://img.shields.io/badge/license-MIT-555?style=flat-square)
-![Claude](https://img.shields.io/badge/Claude-Opus%204-4f46e5?style=flat-square&logo=anthropic&logoColor=white)
-![Codex](https://img.shields.io/badge/Codex-GPT--5.2-1a7f64?style=flat-square&logo=openai&logoColor=white)
-![Gemini](https://img.shields.io/badge/Gemini-3%20Pro-886cb5?style=flat-square&logo=google&logoColor=white)
+![Claude](https://img.shields.io/badge/Claude-Opus%204-6366f1?style=flat-square&logo=anthropic&logoColor=white)
+![Codex](https://img.shields.io/badge/Codex-GPT--5.2-57a89a?style=flat-square&logo=openai&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini-3%20Pro-9f8ec8?style=flat-square&logo=google&logoColor=white)
 
 변증법(테제-안티테제-진테제) 구조로 AI 설계를 검증하는 멀티 에이전트 오케스트레이션 시스템
 
@@ -26,12 +26,12 @@ flowchart LR
     A -- "INVALID" --> C
     A -- "종료" --> R["Report"]
 
-    style E fill:#4f46e5,stroke:#3730a3,color:#fff,rx:8
-    style C fill:#dc2626,stroke:#991b1b,color:#fff,rx:8
-    style A fill:#737373,stroke:#525252,color:#fff,rx:8
-    style R fill:#16a34a,stroke:#166534,color:#fff,rx:8
+    style E fill:#6366f1,stroke:#818cf8,color:#fff,rx:8
+    style C fill:#f87171,stroke:#fca5a5,color:#1e1e1e,rx:8
+    style A fill:#a8a29e,stroke:#d6d3d1,color:#1e1e1e,rx:8
+    style R fill:#86efac,stroke:#bbf7d0,color:#1e1e1e,rx:8
 
-    linkStyle default stroke:#94a3b8,stroke-width:1.5px
+    linkStyle default stroke:#cbd5e1,stroke-width:1.5px
 ```
 
 핵심은 **논점 돌리기를 구조적으로 차단**하는 것입니다. 사람 간 토론에서 흔한 논점 흐리기·순환 논증·무근거 수용을 규칙으로 막아, 혼자 설계하면 "이렇게 하면 되겠지"하고 넘어갈 부분을 전부 드러냅니다.
@@ -85,12 +85,12 @@ flowchart TB
     P2 --> P3
 
     style P0 fill:#f8fafc,stroke:#e2e8f0,color:#334155
-    style P1 fill:#fef2f2,stroke:#fecaca,color:#334155
+    style P1 fill:#fafafa,stroke:#e5e5e5,color:#334155
     style P2 fill:#f8fafc,stroke:#e2e8f0,color:#334155
     style P3 fill:#f8fafc,stroke:#e2e8f0,color:#334155
-    style EX fill:#4f46e5,stroke:#3730a3,color:#fff,rx:8
-    style CH fill:#dc2626,stroke:#991b1b,color:#fff,rx:8
-    style AR fill:#737373,stroke:#525252,color:#fff,rx:8
+    style EX fill:#6366f1,stroke:#818cf8,color:#fff,rx:8
+    style CH fill:#f87171,stroke:#fca5a5,color:#1e1e1e,rx:8
+    style AR fill:#a8a29e,stroke:#d6d3d1,color:#1e1e1e,rx:8
 ```
 
 ## 설치
