@@ -48,7 +48,7 @@ AI가 코드를 빠르게 짜주는 시대에, **사람의 가치는 "빨리 짜
 | 전광판 영상 동기화 | 04-07 | Claude × 3 | 7 | 42건 | 81% |
 | RAG 2차 구현 검증 | 04-08 | Claude / Codex / Gemini | 7 | 40건 | 97.5% |
 | RAG 3차 배포 + 런타임 | 04-09 | Claude / Codex / Gemini | 2 + 9 TC | 3건 | 7/9 PASS |
-| Blender 3D AI Generator | 04-14 | Claude / Codex / Gemini | 14 | 58건 | 100% |
+| Blender 3D AI Generator | 04-14 | Claude / Codex / Gemini | 14 | 58건 | 94.8% |
 | PixelForge 코드검증 | 04-14 | Claude / Codex / Gemini | 6 (4R+Meta+Test) | 30건 | VALID 7건 해소 |
 
 > **RAG 설계 검증에서:** 파이프라인 **3회 재설계**, 핵심 데이터 구조 **7회 변경**, 논점 돌리기 **자동 감지·차단** (Executor Collapse 판별 포함)
@@ -222,6 +222,17 @@ echo "<프롬프트>" | ollama run llama3.1
   - [UDP 전환](docs/experiments/2026-04-07-전광판-영상싱크/improvements/04-UDP-전환.md) — TCP → UDP 멀티캐스트
   - [자동화](docs/experiments/2026-04-07-전광판-영상싱크/improvements/05-자동화.md) — 수동 파라미터 → 적응형
 
+- **[Blender 3D AI Generator 검증 (2026-04-14)](docs/experiments/2026-04-14-Blender-3D-AI-Generator/)** — 14라운드, 58건 모순, VALID 94.8%, 합의 편향 발견 (3회 허위 합의 후 재검토)
+  - [Timer 아키텍처](docs/experiments/2026-04-14-Blender-3D-AI-Generator/improvements/01-Timer-아키텍처.md) — on-demand→상시 500ms, Frame Shift
+  - [외부 의존성 제거](docs/experiments/2026-04-14-Blender-3D-AI-Generator/improvements/02-외부-의존성-제거.md) — 서드파티 0개
+  - [상태머신 확장](docs/experiments/2026-04-14-Blender-3D-AI-Generator/improvements/03-상태머신-확장.md) — 3→6상태
+  - [Undo 안전 임포트](docs/experiments/2026-04-14-Blender-3D-AI-Generator/improvements/04-Undo-안전-임포트.md) — Operator 전용
+  - [파일 무결성](docs/experiments/2026-04-14-Blender-3D-AI-Generator/improvements/05-파일-무결성.md) — magic bytes 검증
+  - [비용 통제](docs/experiments/2026-04-14-Blender-3D-AI-Generator/improvements/06-비용-통제.md) — CompareRequest + 예산
+  - [프로필 이식성](docs/experiments/2026-04-14-Blender-3D-AI-Generator/improvements/07-프로필-이식성.md) — 2계층 분리
+  - [인코딩](docs/experiments/2026-04-14-Blender-3D-AI-Generator/improvements/08-인코딩.md) — UTF-8 통일 + BOM
+  - [테스트 전략](docs/experiments/2026-04-14-Blender-3D-AI-Generator/improvements/09-테스트-전략.md) — 3계층
+
 ### 에이전트 정의
 
 - [Executor (테제)](agents/executor.md) — 설계 제안 + 반박 대응
@@ -240,6 +251,25 @@ echo "<프롬프트>" | ollama run llama3.1
 
 - [재현성 패키지](experiment/README.md) — 파라미터, 프롬프트 템플릿, 측정 지표
 - [실험/문서 작성 가이드](docs/CONTRIBUTING.md) — 새 실험 추가 시 따라야 할 규칙
+
+
+## 변경 이력
+
+### v2.1 (2026-04-14)
+
+interview-wiki-rag 검증 실험 + Blender 3D AI Generator 검증에서 도출된 개선:
+
+- **`--min-rounds` 파라미터** — 조기 종료 방지. RC 도달해도 최소 라운드 미만이면 계속 진행
+- **Phase 0.5: 생태계 최신화 검증** — Executor의 구식 전제(모델/프레임워크)를 웹 검색으로 사전 검증
+- **Phase 2.5: 해소 재검증 (Resolution Audit)** — 해소 선언된 모순의 실제 해소 깊이 재검토
+- **Phase 2.6: 의존성 체인 탐지** — 미해소 모순의 공통 근본 원인(순환 종속) 자동 감지
+- **Phase 2.7: 에스컬레이션 타이밍 검증** — PROACTIVE vs REACTIVE 구분
+- **Arbiter 폴백 체인** — 모델 장애 시 대행 규칙 + 역할 충돌 시 판정 엄격도 강화
+- **Challenger v2 프롬프트 8번 추가** — 생태계 최신화 검증 관점
+
+### v2.0 (2026-04-06)
+
+- 초기 릴리스: 3모델 구조, Collapse 조작적 정의, 독립 체크리스트, 프레임 전환 검증
 
 ## 라이선스
 

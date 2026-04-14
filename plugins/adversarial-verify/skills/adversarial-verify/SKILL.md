@@ -22,6 +22,7 @@ description: 멀티 에이전트 적대적 검증 사이클을 실행합니다. 
 | `--challenger` | `codex` | Challenger 역할 모델 |
 | `--arbiter` | `gemini` | Arbiter 역할 모델 |
 | `--rounds` | `50` | 최대 라운드 (동적 종료가 기본) |
+| `--min-rounds` | `1` | 최소 라운드 수. RC 도달해도 이 수 이하면 계속 진행. 조기 종료 방지용. |
 | `--v1` | (미사용) | v1 placebo 모드 (프레임 전환 검증 없음, 비교 실험용) |
 
 ## 실행 프로토콜
@@ -33,8 +34,30 @@ description: 멀티 에이전트 적대적 검증 사이클을 실행합니다. 
 1. **Arbiter**에게 주제 브리핑 생성 요청
 2. **Challenger**에게 독립 체크리스트 생성 요청 (Executor 제안 보기 전)
 3. **Executor**가 설계 제안 생성
+4. **생태계 스냅샷 수집** — 프로젝트가 의존하는 플랫폼/모델/프레임워크의 최신 상태를 웹 검색으로 확인
 
 Challenger와 Executor는 **병렬 실행** 가능.
+
+#### Phase 0.5: 생태계 최신화 검증 (Ecosystem Currency Check)
+
+Executor 제안이 나온 직후, 제안에 등장하는 핵심 기술 의존성에 대해 웹 검색을 수행한다:
+
+```
+검증 대상:
+- 사용 중인 모델의 최신 대안 (같은 플랫폼에서 사용 가능한 신규 모델)
+- 사용 중인 프레임워크/라이브러리의 최신 버전 및 breaking changes
+- 사용 중인 인프라/플랫폼의 최신 요금제/한도/기능 변경
+- 경쟁 플랫폼의 무료 티어 변경 사항
+
+검색 패턴 예시:
+- "[플랫폼] supported models [현재 연월]"
+- "[모델명] alternatives [현재 연월] benchmark"
+- "[프레임워크] changelog breaking changes [현재 연월]"
+```
+
+**실험 근거**: interview-wiki-rag 검증(2026-04-14)에서 Executor가 "Llama 8B밖에 없다"는 구식 전제로 3라운드를 소비.
+실제로는 10일 전(4/4) Gemma 4 26B A4B, 5일 전(4/9) Qwen3-30B-A3B가 동일 플랫폼에 추가되어 있었음.
+이 단계가 있었다면 C-12(critical), C-19(critical)가 Round 1에서 해소 가능했음.
 
 ### Phase 1: 대조
 
@@ -46,15 +69,56 @@ Challenger와 Executor는 **병렬 실행** 가능.
 
 1. **Challenger** 반박 (기존 모순 + 체크리스트 누락)
 2. **Arbiter** 검증:
-   - ��� 모순: VALID / WEAK / INVALID
+   - 각 모순: VALID / WEAK / INVALID
    - Challenger 상태: SD / RC / CA / CS
    - Executor frame_shift 여부
 3. **종료 조건 확인**:
    - CA 또는 CS 감지 → 즉시 종료 + Collapse 보고
-   - 모든 모순이 RC → 합의 도달 종료
+   - 모든 모순이 RC **AND** 현재 라운드 >= `--min-rounds` → 합의 도달 종료
+   - RC이지만 `--min-rounds` 미달 → Challenger에게 "해소된 모순의 해소 깊이 재검증" 요청 후 계속
    - 최대 라운드 도달 → 강제 종료
    - Arbiter가 escalate_to_human → 사람 에스컬레이션
 4. 종료 아니면 → **Executor** VALID 모순에만 대응 → 다음 라운드
+
+### Phase 2.5: 해소 재검증 (Resolution Audit)
+
+`--min-rounds` >= 3일 때 자동 활성화. 최종 라운드에서 Challenger에게 추가 지시:
+
+```
+이전 라운드에서 "해소됨"으로 선언된 모순들을 재검증하세요:
+1. 해소 방법이 문제를 실제로 해결했는가, 아니면 검증 범위를 축소하여 달성한 것인가?
+2. 해소 시 새로운 전제가 도입되었다면, 그 전제 자체가 유효한가?
+3. "부분 해소"라고 선언된 것이 실제로 충분한 수준인가?
+```
+
+실험 결과: Round 4에서 C-09(regex 인용 검증)와 C-11(wall-clock/CPU 분리)의 해소가 철회됨. 이 메커니즘이 없었으면 검증 품질이 과대평가될 뻔했음.
+
+### Phase 2.6: 의존성 체인 탐지 (Dependency Chain Detection)
+
+매 라운드 종료 후 Arbiter가 추가로 수행:
+
+```
+현재까지의 미해소 모순들이 공통 근본 원인(root cause)을 공유하는지 분석하세요.
+여러 모순이 동일한 제약(예: 무료 티어 한계, 모델 성능 한계)으로 수렴한다면:
+1. 순환 의존성(circular dependency) 여부 판정
+2. 단일 결정으로 다수 모순을 동시 해소할 수 있는 피벗 포인트 식별
+3. Executor에게 개별 대응 대신 근본 원인 해소를 요구
+```
+
+실험 결과: C-08, C-10, C-14, C-16, C-18이 모두 "무료 티어 한계"로 수렴 (C-19). 개별 우회책은 순환 종속을 만들 뿐이었음. 이 탐지가 2라운드에서 작동했다면 1라운드 더 빨리 근본 원인에 도달했을 것.
+
+### Phase 2.7: 에스컬레이션 타이밍 검증
+
+Executor가 `escalate_to_human`을 요청할 때 Arbiter가 추가 판정:
+
+```
+에스컬레이션 정당성 판정:
+- PROACTIVE: 1-2라운드 내 비즈니스/정책 결정 필요성을 선제 식별 → 정당
+- REACTIVE: 기술적 해소 실패 후 판정 권한 외부 이전 → frame_shift로 기록
+- 판정 기준: 에스컬레이션 대상 항목이 처음부터 기술적으로 해소 불가능했는가?
+```
+
+실험 결과: C-20에서 Executor의 에스컬레이션이 REACTIVE로 판정됨. "월0원 vs 고품질"은 1라운드에서 비즈니스 결정으로 선제 에스컬레이션했어야 함.
 
 ### Phase 3: 최종 리포트
 
@@ -151,9 +215,6 @@ TC 출력을 프로젝트 환경에 맞게 변환한다:
 직접 생성. Agent 도구 사용 불필요.
 
 ### codex
-```bash
-node "C:/Users/cho/.claude/plugins/marketplaces/openai-codex/plugins/codex/scripts/codex-companion.mjs" task --fresh "<프롬프트>"
-```
 - codex:codex-rescue 서브에이전트 사용
 - 매 라운드 `--fresh`로 새 스레드
 
@@ -163,6 +224,19 @@ gemini -p "<프롬프트>"
 ```
 - 단발 프롬프트 모드
 - 타임아웃 120초
+
+### Arbiter 폴백 체인
+
+모델 장애(rate limit, 타임아웃 등) 시 Arbiter 역할 대행 규칙:
+
+1. **gemini** (기본) → 실패 시
+2. **claude** (메인 세션 대행) → 역할 충돌 시
+3. **codex** (최후 수단)
+
+대행 시 반드시 기록: `[Arbiter 대행: claude, 사유: gemini rate limit]`
+대행은 동일 라운드 내에서만 유효. 다음 라운드에서 원래 모델 재시도.
+
+**역할 충돌 주의**: claude가 Executor이면서 Arbiter를 대행하면 자기 제안을 자기가 판정하는 이해 충돌 발생. 이 경우 Arbiter 판정에서 Executor에 유리한 판정(INVALID)을 내릴 때 근거를 2배 엄격하게 요구.
 
 ## Challenger 프롬프트
 
@@ -179,6 +253,7 @@ gemini -p "<프롬프트>"
 5. 확장성 리스크 — 현재는 되지만 규모가 커지면 문제가 되는가?
 6. 프레임 전환 검증 — Executor가 미해소 모순을 제약조건/수용 가능한 리스크 등으로 재정의하면 기술적 해소인지 문제 회피인지 판단한다. 문제의 프레임을 바꾸는 것은 해소가 아니다. 해당 판단은 사람의 권한이다.
 7. 독립 체크리스트 대조 — 체크리스트에서 Executor가 다루지 않은 항목을 제기한다.
+8. 생태계 최신화 검증 — Executor의 제안이 구식 모델/프레임워크/플랫폼 전제에 기반하고 있는지 확인한다. "이것밖에 없다"는 전제가 실제 최신 생태계와 일치하는지 웹 검색으로 검증한다.
 
 {이력 요약}
 {Executor 제안/대응}
@@ -192,7 +267,7 @@ JSON으로만 응답:
 
 6번만 다름 (동일 길이):
 ```
-6. 종합 검토 — 위 5가지 관점에서 발견한 모순을 종합적으로 정리하여 제시한다. �� 모순은 독립적으로 서술하며, 중복 없이 명확하게 구분한다. 모순 간의 연관 관계가 있으면 이를 명시하되, 최종 판단은 사람(최종 결정권자)의 권한이다.
+6. 종합 검토 — 위 5가지 관점에서 발견한 모순을 종합적으로 정리하여 제시한다. 각 모순은 독립적으로 서술하며, 중복 없이 명확하게 구분한다. 모순 간의 연관 관계가 있으면 이를 명시하되, 최종 판단은 사람(최종 결정권자)의 권한이다.
 ```
 
 ## Arbiter 프롬프트
@@ -207,7 +282,7 @@ Collapse 판별:
 - sustained_disagreement: 새로운 근거로 일관된 반박 유지
 - rational_consensus: 논리적 근거 기반 명시적 동의
 - collapse_acquiescence: 근거 없는 체념적 동의
-- collapse_surrender: 토론 포기, 빈 배�� + 미해소 추적 중단
+- collapse_surrender: 토론 포기, 빈 배열 + 미해소 추적 중단
 
 {Challenger 반박}
 {Executor 대응}
@@ -215,8 +290,5 @@ Collapse 판별:
 
 ## 에이전트 정의 참조
 
-상세 역할 정의는 아래 파일 참조:
-- `C:\Users\cho\Desktop\Project\multi-agent-adversarial-verification\agents\executor.md`
-- `C:\Users\cho\Desktop\Project\multi-agent-adversarial-verification\agents\challenger.md`
-- `C:\Users\cho\Desktop\Project\multi-agent-adversarial-verification\agents\arbiter.md`
-- `C:\Users\cho\Desktop\Project\multi-agent-adversarial-verification\agents\orchestrator.md`
+상세 역할 정의는 GitHub 레포 참조:
+- https://github.com/cho1124/multi-agent-adversarial-verification/tree/main/agents
