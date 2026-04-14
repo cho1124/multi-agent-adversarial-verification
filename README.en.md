@@ -2,10 +2,10 @@
 
 > **[한국어](README.md)** | English
 
-![License](https://img.shields.io/badge/license-MIT-blue)
-![Claude](https://img.shields.io/badge/Claude-Opus%204-blueviolet)
-![Codex](https://img.shields.io/badge/Codex-GPT--5.2-green)
-![Gemini](https://img.shields.io/badge/Gemini-3%20Pro-orange)
+![License](https://img.shields.io/badge/license-MIT-555?style=flat-square)
+![Claude](https://img.shields.io/badge/Claude-Opus%204-4f46e5?style=flat-square&logo=anthropic&logoColor=white)
+![Codex](https://img.shields.io/badge/Codex-GPT--5.2-1a7f64?style=flat-square&logo=openai&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini-3%20Pro-886cb5?style=flat-square&logo=google&logoColor=white)
 
 A multi-agent orchestration system that verifies AI-generated designs through dialectical structure (Thesis-Antithesis-Synthesis).
 
@@ -17,16 +17,21 @@ This system pits 3 AI agents with different roles against each other in structur
 
 ```mermaid
 flowchart LR
-    E["🎯 Executor<br/>(Thesis)<br/>Proposes design"] -->|"Submit design"| C["⚔️ Challenger<br/>(Antithesis)<br/>Attacks flaws"]
-    C -->|"Submit rebuttal"| A["⚖️ Arbiter<br/>(Synthesis)<br/>Judges validity"]
-    A -->|"VALID → Require fix"| E
-    A -->|"INVALID → Dismiss"| C
-    A -->|"Termination met"| R["📋 Final Report"]
+    E["Executor
+(Thesis)"] -- Design --> C["Challenger
+(Antithesis)"]
+    C -- Rebuttal --> A["Arbiter
+(Synthesis)"]
+    A -- "VALID" --> E
+    A -- "INVALID" --> C
+    A -- "Done" --> R["Report"]
 
-    style E fill:#4A90D9,stroke:#2E6AB0,color:#fff
-    style C fill:#D94A4A,stroke:#B02E2E,color:#fff
-    style A fill:#D9A04A,stroke:#B07E2E,color:#fff
-    style R fill:#4AD97A,stroke:#2EB05A,color:#fff
+    style E fill:#4f46e5,stroke:#3730a3,color:#fff,rx:8
+    style C fill:#dc2626,stroke:#991b1b,color:#fff,rx:8
+    style A fill:#737373,stroke:#525252,color:#fff,rx:8
+    style R fill:#16a34a,stroke:#166534,color:#fff,rx:8
+
+    linkStyle default stroke:#94a3b8,stroke-width:1.5px
 ```
 
 The key is **structurally preventing derailment**. Rules block common debate pitfalls — topic shifting, circular reasoning, and unfounded acceptance — exposing every weak point that a solo designer would gloss over with "this should work."
@@ -50,33 +55,42 @@ In an era where AI writes code fast, **human value is shifting from "writing qui
 
 ```mermaid
 flowchart TB
-    subgraph Phase0["Phase 0: Initialization"]
-        P0["Topic analysis -> Subtopic decomposition"]
-    end
-
-    subgraph Phase1["Phase 1: Adversarial Verification Loop"]
+    subgraph P0 [" "]
         direction LR
-        EX["Executor<br/>Propose / Revise"] --> CH["Challenger<br/>Find contradictions"]
-        CH --> AR["Arbiter<br/>VALID / WEAK / INVALID"]
-        AR -->|"Unresolved issues"| EX
+        p0_title["<b>Phase 0</b> · Init"]
+        p0_desc["Topic analysis → Subtopic decomposition"]
     end
 
-    subgraph Phase2["Phase 2: Convergence"]
-        P2["3 consecutive INVALIDs or<br/>max rounds reached -> Stop"]
+    subgraph P1 [" "]
+        direction LR
+        EX["Executor"] --> CH["Challenger"]
+        CH --> AR["Arbiter"]
+        AR -->|loop| EX
     end
 
-    subgraph Phase3["Phase 3: Final Report"]
-        P3["Contradictions - Improvements - Open issues"]
+    subgraph P2 [" "]
+        direction LR
+        p2_title["<b>Phase 2</b> · Converge"]
+        p2_desc["3 consecutive INVALIDs or max rounds → Stop"]
     end
 
-    Phase0 --> Phase1
-    Phase1 --> Phase2
-    Phase2 --> Phase3
+    subgraph P3 [" "]
+        direction LR
+        p3_title["<b>Phase 3</b> · Report"]
+        p3_desc["Contradictions · Improvements · Open issues"]
+    end
 
-    style Phase0 fill:#E8F0FE,stroke:#4A90D9
-    style Phase1 fill:#FDE8E8,stroke:#D94A4A
-    style Phase2 fill:#FEF3E0,stroke:#D9A04A
-    style Phase3 fill:#E8FEE8,stroke:#4AD97A
+    P0 --> P1
+    P1 --> P2
+    P2 --> P3
+
+    style P0 fill:#f8fafc,stroke:#e2e8f0,color:#334155
+    style P1 fill:#fef2f2,stroke:#fecaca,color:#334155
+    style P2 fill:#f8fafc,stroke:#e2e8f0,color:#334155
+    style P3 fill:#f8fafc,stroke:#e2e8f0,color:#334155
+    style EX fill:#4f46e5,stroke:#3730a3,color:#fff,rx:8
+    style CH fill:#dc2626,stroke:#991b1b,color:#fff,rx:8
+    style AR fill:#737373,stroke:#525252,color:#fff,rx:8
 ```
 
 ## Installation
