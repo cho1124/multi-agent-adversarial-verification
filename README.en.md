@@ -2,6 +2,11 @@
 
 > **[한국어](README.md)** | English
 
+![License](https://img.shields.io/badge/license-MIT-blue)
+![Claude](https://img.shields.io/badge/Claude-Opus%204-blueviolet)
+![Codex](https://img.shields.io/badge/Codex-GPT--5.2-green)
+![Gemini](https://img.shields.io/badge/Gemini-3%20Pro-orange)
+
 A multi-agent orchestration system that verifies AI-generated designs through dialectical structure (Thesis-Antithesis-Synthesis).
 
 ## What is this?
@@ -10,10 +15,18 @@ When you ask AI to "design this," you get a plausible answer. But **how do you k
 
 This system pits 3 AI agents with different roles against each other in structured debate, systematically uncovering design flaws:
 
-```
-Executor   (Thesis)       →  Proposes the design
-Challenger (Antithesis)   →  Attacks contradictions and flaws
-Arbiter    (Synthesis)    →  Judges the validity of each challenge
+```mermaid
+flowchart LR
+    E["🎯 Executor<br/>(Thesis)<br/>Proposes design"] -->|"Submit design"| C["⚔️ Challenger<br/>(Antithesis)<br/>Attacks flaws"]
+    C -->|"Submit rebuttal"| A["⚖️ Arbiter<br/>(Synthesis)<br/>Judges validity"]
+    A -->|"VALID → Require fix"| E
+    A -->|"INVALID → Dismiss"| C
+    A -->|"Termination met"| R["📋 Final Report"]
+
+    style E fill:#4A90D9,stroke:#2E6AB0,color:#fff
+    style C fill:#D94A4A,stroke:#B02E2E,color:#fff
+    style A fill:#D9A04A,stroke:#B07E2E,color:#fff
+    style R fill:#4AD97A,stroke:#2EB05A,color:#fff
 ```
 
 The key is **structurally preventing derailment**. Rules block common debate pitfalls — topic shifting, circular reasoning, and unfounded acceptance — exposing every weak point that a solo designer would gloss over with "this should work."
@@ -22,10 +35,49 @@ The key is **structurally preventing derailment**. Rules block common debate pit
 
 In an era where AI writes code fast, **human value is shifting from "writing quickly" to "judging correctly."** This system helps you spend AI-saved time not on producing *more*, but on producing *better*.
 
-Results from real adversarial verification of a RAG (Retrieval-Augmented Generation) system:
-- Pipeline **redesigned 3 times** — solo, the first draft would've shipped as-is
-- Core data structures **changed 7 times** — solo, these issues would never have been found
-- Topic derailment **auto-detected and blocked** — including Executor Collapse detection
+### Real Verification Results
+
+| Experiment | Date | Models | Rounds | Contradictions | VALID Rate |
+|-----------|------|--------|--------|----------------|------------|
+| RAG System Design | 04-06 | Claude x 3 | 21 | 47 | 98% |
+| LED Video Sync | 04-07 | Claude x 3 | 7 | 42 | 81% |
+| RAG Implementation | 04-08 | Claude / Codex / Gemini | 7 | 40 | 97.5% |
+| RAG Deploy + Runtime | 04-09 | Claude / Codex / Gemini | 2 + 9 TC | 3 | 7/9 PASS |
+
+> **From RAG verification:** Pipeline **redesigned 3 times**, core data structures **changed 7 times**, topic derailment **auto-detected and blocked** (including Executor Collapse detection)
+
+## How It Works
+
+```mermaid
+flowchart TB
+    subgraph Phase0["Phase 0: Initialization"]
+        P0["Topic analysis -> Subtopic decomposition"]
+    end
+
+    subgraph Phase1["Phase 1: Adversarial Verification Loop"]
+        direction LR
+        EX["Executor<br/>Propose / Revise"] --> CH["Challenger<br/>Find contradictions"]
+        CH --> AR["Arbiter<br/>VALID / WEAK / INVALID"]
+        AR -->|"Unresolved issues"| EX
+    end
+
+    subgraph Phase2["Phase 2: Convergence"]
+        P2["3 consecutive INVALIDs or<br/>max rounds reached -> Stop"]
+    end
+
+    subgraph Phase3["Phase 3: Final Report"]
+        P3["Contradictions - Improvements - Open issues"]
+    end
+
+    Phase0 --> Phase1
+    Phase1 --> Phase2
+    Phase2 --> Phase3
+
+    style Phase0 fill:#E8F0FE,stroke:#4A90D9
+    style Phase1 fill:#FDE8E8,stroke:#D94A4A
+    style Phase2 fill:#FEF3E0,stroke:#D9A04A
+    style Phase3 fill:#E8FEE8,stroke:#4AD97A
+```
 
 ## Installation
 
