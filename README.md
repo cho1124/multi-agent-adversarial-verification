@@ -34,7 +34,7 @@ flowchart LR
     linkStyle default stroke:#cbd5e1,stroke-width:1.5px
 ```
 
-핵심은 **논점 돌리기를 구조적으로 차단**하는 것입니다. 사람 간 토론에서 흔한 논점 흐리기·순환 논증·무근거 수용을 규칙으로 막아, 혼자 설계하면 "이렇게 하면 되겠지"하고 넘어갈 부분을 전부 드러냅니다.
+핵심은 **논점 돌리기를 구조적으로 차단**하고, **AI 모델 간 공유 편향(데이터 근친교배)을 탐지**하는 것입니다. 사람 간 토론에서 흔한 논점 흐리기·순환 논증·무근거 수용을 규칙으로 막고, AI 모델들이 유사한 학습 데이터를 공유하여 "세 모델 모두 당연하다고 여기지만 실제로는 틀린" 전제까지 드러냅니다.
 
 ## 왜 필요한가요?
 
@@ -182,6 +182,14 @@ echo "<프롬프트>" | ollama run llama3.1
 
 - **[멀티 에이전트 적대적 검증 시스템 설계](docs/멀티%20에이전트%20적대적%20검증%20시스템%20설계.md)** — 이론, 설계 원칙, 실험 결과, 메타 검증, 남은 과제
 
+- **[v2.2: 데이터 근친교배 방어 (2026-04-15)](docs/멀티%20에이전트%20적대적%20검증%20시스템%20설계.md#v22-데이터-근친교배-방어-2026-04-15)** — AI 모델 간 공유 편향(Shared Bias) 구조적 탐지 및 방어
+  - 공유 전제 감사 (Phase 2.8) — 매 3라운드 암묵적 전제 추출 → Challenger 명시적 공격 대상화
+  - 합의 속도 이상 감지 (Phase 2.9) — CVA 판정 → Devil's Advocate 강제 라운드 → genuine_consensus 검증
+  - 외부 그라운딩 주입 (Phase 2.10) — 합의된 사실 주장을 웹 검색/코드 실행/벤치마크로 실제 검증
+  - 이론적 근거: Kuhn 패러다임 전환(1962), Janis 집단사고 방지(1972), 과학적 방법론의 실험 검증 원칙
+  - 기존 v2.0(개별 모델 실패 방어) → v2.1(검증 품질 강화) → v2.2(공유 편향 방어) 계층 구조
+  - 미검증: SA 추출 정밀도, DA 구분 정확도, 그라운딩 트리거 빈도, 최적 SA 주기, CVA 임계값
+
 ### 실험 기록
 
 - **[RAG 시스템 적대적 검증 (2026-04-06)](docs/experiments/2026-04-06-RAG-시스템-검증/)** — 3소주제, 21라운드, 47건 모순, VALID 98%
@@ -260,6 +268,20 @@ echo "<프롬프트>" | ollama run llama3.1
 
 
 ## 변경 이력
+
+### v2.2 (2026-04-15)
+
+데이터 근친교배(Data Inbreeding) / 공유 편향(Shared Bias) 방어 메커니즘 추가:
+
+AI 모델들은 유사한 학습 데이터를 공유하므로, 적대적 구조에서도 세 모델 모두 동일한 오류를 공유할 수 있다. 이를 구조적으로 탐지하고 방어하는 3개 Phase를 추가.
+
+- **Phase 2.8: 공유 전제 감사 (Shared Assumption Audit)** — 매 3라운드마다 Arbiter가 "양측 모두 의심 없이 수용한 암묵적 전제"를 추출하여 Challenger에게 명시적 공격 대상으로 제시. 전제가 깨지면 `shared_assumption_flaw` 모순으로 등록
+- **Phase 2.9: 합의 속도 이상 감지 (Consensus Velocity Anomaly)** — Challenger가 비정상적으로 빠르게 합의에 도달할 때 Devil's Advocate 강제 라운드 삽입. DA에서도 빈 배열이면 `genuine_consensus`로 인정
+- **Phase 2.10: 외부 그라운딩 주입 (External Grounding Injection)** — Phase 3 직전에 합의된 사실 주장을 웹 검색/코드 실행/벤치마크로 실제 검증. 불일치 시 추가 라운드 개시
+- **Challenger Devil's Advocate 모드** — CVA/SA 트리거 시 근본 접근법 의심, 스케일 변환 검증, 외부 관점 시뮬레이션 등 5가지 강제 관점
+- **Arbiter 신규 역할 3가지** — 공유 편향 감시, 합의 속도 감시, 외부 그라운딩 조율
+- **최종 리포트 신규 지표 7개** — `shared_assumptions_extracted/broken`, `consensus_velocity_anomalies`, `devils_advocate_rounds`, `genuine_consensus`, `grounding_checks/discrepancies`
+- **종료 조건 강화** — RC 도달 시 CVA 미감지 또는 DA 통과 조건 추가
 
 ### v2.1 (2026-04-14)
 

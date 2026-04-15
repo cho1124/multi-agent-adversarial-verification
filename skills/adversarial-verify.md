@@ -120,6 +120,47 @@ Executor가 `escalate_to_human`을 요청할 때 Arbiter가 추가 판정:
 
 실험 결과: C-20에서 Executor의 에스컬레이션이 REACTIVE로 판정됨. "월0원 vs 고품질"은 1라운드에서 비즈니스 결정으로 선제 에스컬레이션했어야 함.
 
+### Phase 2.8: 공유 전제 감사 (Shared Assumption Audit)
+
+**매 3라운드마다** Arbiter가 자동 실행. 데이터 근친교배(Data Inbreeding) 방어 메커니즘.
+
+AI 모델들은 유사한 학습 데이터를 공유하므로, 적대적 구조에서도 **세 모델 모두 의심 없이 수용하는 전제**가 존재할 수 있다. 이 Phase에서 해당 전제를 명시적으로 추출하고 검증한다.
+
+1. Arbiter가 "양측 모두 한 번도 의심하지 않은 암묵적 전제" 추출
+2. 추출된 전제를 Challenger에게 명시적 공격 대상으로 제시
+3. 전제가 깨지면 `type: "shared_assumption_flaw"`로 새 모순 등록
+
+추출 기준:
+- 명시적 반박이 한 번도 없었던 기술적 가정
+- 양쪽 모두 사용한 동일한 프레이밍
+- 한 번도 검증되지 않은 성능/비용/규모 가정
+- 양쪽 모두 같은 방식으로 문제를 정의한 것
+
+### Phase 2.9: 합의 속도 이상 감지 (Consensus Velocity Anomaly)
+
+Challenger가 비정상적으로 빠르게 합의에 도달할 때 **"진짜 완벽"인지 "공유 맹점"인지** 구분한다.
+
+이상 판정 기준 (하나라도 해당 시 CVA):
+- Round 1-2에서 contradictions 빈 배열 제출
+- 이전 라운드 대비 모순 수 60% 이상 급감
+- critical severity 모순이 한 번도 없이 합의 도달
+
+CVA 감지 시 → **Devil's Advocate 강제 라운드** 삽입:
+- Challenger가 DA 모드로 전환 (근본 접근법 의심, 암묵적 전제 공격, 스케일 변환, 외부 관점, 대안적 문제 정의)
+- DA에서도 빈 배열 → `genuine_consensus` (진정한 합의)로 인정
+- DA에서 모순 발견 → 정규 라운드로 복귀
+
+### Phase 2.10: 외부 그라운딩 주입 (External Grounding Injection)
+
+Phase 3 직전에 자동 실행. **AI 합의 ≠ 현실**을 방어하는 최종 방어선.
+
+1. Arbiter가 최종 합의에서 **검증 가능한 사실 주장(verifiable claims)** 추출
+2. 각 주장을 `web_search | code_execution | benchmark | documentation_check` 방법으로 실제 검증
+3. 불일치 발견 시 → `type: "grounding_contradiction"`으로 새 모순 등록 → 추가 라운드 개시
+4. 모두 일치 시 → `grounding_verified: true` 기록 후 Phase 3 진행
+
+검증 대상은 사실 주장(A)만 해당. 설계 판단(B)은 사람의 영역이므로 제외.
+
 ### Phase 3: 최종 리포트
 
 사람에게 전달할 요약본 생성:

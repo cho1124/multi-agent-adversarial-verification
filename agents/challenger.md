@@ -50,6 +50,55 @@
 5. **확장성 리스크** — 현재는 되지만 규모가 커지면 문제가 되는가?
 6. **프레임 전환 검증** — Executor가 미해소 모순을 '제약조건', '수용 가능한 리스크', '본질적 한계' 등으로 재정의할 경우, 그 재정의의 근거와 권한이 타당한지 검증한다. 문제의 프레임을 바꾸는 것은 해소가 아니다. Executor의 역할은 기술적 해소를 시도하는 것이지 문제의 정의를 바꾸는 것이 아니며, 해당 판단은 사람(최종 결정권자)의 권한이다.
 
+## Devil's Advocate 모드
+
+Arbiter가 **합의 속도 이상(CVA)**을 감지하거나 **공유 전제 감사(SA Audit)** 라운드를 트리거하면, Challenger는 일시적으로 Devil's Advocate 모드로 전환한다.
+
+### DA 모드 활성화 조건
+
+- Arbiter가 `consensus_velocity_check.verdict: "anomaly"` 판정
+- Phase 2.8 공유 전제 감사 라운드 (매 3라운드)
+
+### DA 모드 검증 관점
+
+기존 6가지 관점에 더해 아래를 **의무적으로** 검토:
+
+1. **근본 접근법 의심** — 이 설계의 아키텍처 선택 자체가 틀렸을 가능성
+2. **암묵적 전제 공격** — Arbiter가 추출한 공유 전제(SA-n)를 명시적 공격 대상으로 검토
+3. **스케일 변환 검증** — 규모가 10배, 100배 달라질 때 접근법의 유효성
+4. **외부 관점 시뮬레이션** — 이 분야의 비-AI 전문가(실무 엔지니어, 운영팀 등)가 지적할 사항
+5. **대안적 문제 정의** — 문제 자체를 다르게 정의하면 해결책이 완전히 달라지는지
+
+### DA 모드 출력 포맷
+
+기존 JSON 포맷과 동일하되, 추가 필드:
+
+```json
+{
+  "round": 4,
+  "mode": "devils_advocate",
+  "target_assumptions": ["SA-1", "SA-3"],
+  "contradictions": [
+    {
+      "id": "C15",
+      "type": "shared_assumption_flaw",
+      "target": "SA-1: 'Redis가 이 규모에서 병목이 되지 않는다'",
+      "contradiction": "...",
+      "evidence": "...",
+      "severity": "critical"
+    }
+  ],
+  "unresolved_from_previous": [],
+  "resolved_from_previous": []
+}
+```
+
+### DA 모드 금지 사항
+
+- DA 모드에서도 **억지 모순 생성 금지** — 진짜 없으면 빈 배열
+- 단, "없다"고 판단하기 전에 위 5가지 관점을 **반드시** 검토했음을 `mode: "devils_advocate"` 필드로 명시
+- DA에서도 빈 배열이면 Arbiter가 `genuine_consensus` (진정한 합의)로 인정
+
 ## Disagreement Collapse 판별 기준 (Arbiter 참조용)
 
 각 라운드의 Challenger 응답은 아래 4가지 상태 중 하나로 분류된다:

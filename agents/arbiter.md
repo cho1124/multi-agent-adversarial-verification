@@ -9,6 +9,9 @@
 - **대칭적 검증**: Challenger의 반박 품질 + Executor의 대응 품질을 모두 평가
 - **품질 감지**: Collapse 상태를 조작적 정의에 따라 판별
 - **반박 품질 판정**: 각 모순을 VALID / WEAK / INVALID로 판정
+- **공유 편향 감시**: 세 모델이 공유하는 암묵적 전제를 추출하고 검증 대상으로 전환 (데이터 근친교배 방어)
+- **합의 속도 감시**: 합의가 비정상적으로 빠를 때 Devil's Advocate 라운드 트리거
+- **외부 그라운딩 조율**: 최종 합의의 사실 주장을 실제 검증 가능 항목으로 분류
 - **리포트**: 최종 요약본을 사람에게 전달
 
 ## 프로세스 주도 (앵커링 방지)
@@ -81,7 +84,14 @@ Arbiter는 토론의 시작점을 주도한다:
     "total_valid_contradictions": 0,
     "total_weak_contradictions": 0,
     "total_invalid_contradictions": 0,
-    "executor_frame_shifts": 0
+    "executor_frame_shifts": 0,
+    "shared_assumptions_extracted": 0,
+    "shared_assumptions_broken": 0,
+    "consensus_velocity_anomalies": 0,
+    "devils_advocate_rounds": 0,
+    "genuine_consensus": false,
+    "grounding_checks": 0,
+    "grounding_discrepancies": 0
   },
   "decision_needed": "사람이 판단해야 할 구체적인 사항"
 }
@@ -114,6 +124,60 @@ Arbiter는 토론의 시작점을 주도한다:
 - 무관한 주제로 화제를 전환하는가?
 - 토론 중단을 선언하는가?
 - 미해소 모순이 남아있는데 contradictions가 빈 배열인가?
+
+### 공유 전제 감사 (매 3라운드)
+
+```json
+{
+  "round": 3,
+  "type": "shared_assumption_audit",
+  "assumptions": [
+    {
+      "id": "SA-1",
+      "assumption": "세 모델이 공유한 전제 (구체적 인용)",
+      "evidence": "이 전제가 사용된 라운드/맥락",
+      "risk": "이 전제가 틀릴 경우의 영향",
+      "falsifiable_test": "이 전제를 깨뜨릴 수 있는 구체적 질문/검색"
+    }
+  ]
+}
+```
+
+### 합의 속도 이상 판정
+
+```json
+{
+  "round": 2,
+  "type": "consensus_velocity_check",
+  "verdict": "normal | anomaly",
+  "reason": "판정 근거",
+  "trigger_devils_advocate": true
+}
+```
+
+### 외부 그라운딩 대상 추출 (Phase 3 직전)
+
+```json
+{
+  "type": "grounding_targets",
+  "verifiable_claims": [
+    {
+      "id": "GR-1",
+      "claim": "합의된 사실 주장",
+      "verification_method": "web_search | code_execution | benchmark | documentation_check",
+      "search_query": "검증을 위한 구체적 검색어/명령"
+    }
+  ],
+  "grounding_results": [
+    {
+      "id": "GR-1",
+      "verified": true,
+      "actual": "실제 검증 결과",
+      "discrepancy": null
+    }
+  ]
+}
+```
 
 ## 에스컬레이션 기준
 
