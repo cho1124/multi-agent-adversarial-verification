@@ -50,6 +50,8 @@ AI가 코드를 빠르게 짜주는 시대에, **사람의 가치는 "빨리 짜
 | RAG 3차 배포 + 런타임 | 04-09 | Claude / Codex / Gemini | 2 + 9 TC | 3건 | 7/9 PASS |
 | Blender 3D AI Generator | 04-14 | Claude / Codex / Gemini | 14 | 58건 | 94.8% |
 | PixelForge 코드검증 | 04-14 | Claude / Codex / Gemini | 6 (4R+Meta+Test) | 30건 | VALID 7건 해소 |
+| LLM 추론 성능 최적화 (Cloud) | 04-15 | Claude / Codex / Gemini | 4 | 28건 | 85% |
+| LLM 추론 성능 최적화 (Local) | 04-15 | Claude / Codex / Gemini | 3 | 13건 | 100% |
 
 > **RAG 설계 검증에서:** 파이프라인 **3회 재설계**, 핵심 데이터 구조 **7회 변경**, 논점 돌리기 **자동 감지·차단** (Executor Collapse 판별 포함)
 
@@ -214,6 +216,10 @@ echo "<프롬프트>" | ollama run llama3.1
   - [API 계약 정직성](docs/experiments/2026-04-14-PixelForge-Verification/improvements/04-api-contract.md) — non-square ValueError (Meta VALID)
   - [Unity 연동](docs/experiments/2026-04-14-PixelForge-Verification/improvements/05-unity-integration.md) — Newtonsoft.Json + padding 좌표
   - [테스트 자동화](docs/experiments/2026-04-14-PixelForge-Verification/improvements/06-test-automation.md) — Mock ComfyUI + E2E + 에러 경로 + 픽셀 검증
+
+- **[LLM 추론 성능 최적화 검증 (2026-04-15)](docs/experiments/2026-04-15-LLM-추론-성능-최적화/)** — 2회 검증: Cloud 4라운드 28건 + Local 3라운드 13건, 총 41건 모순 전체 해소
+  - Cloud: 양자화/경량 모델 교체 불가 판정, 프로파일링→리랭커→프롬프트 캐싱 우선순위 확정
+  - Local: 임베딩(BGE-M3)→LLM(gemma4:e4b)→리랭커 교체 계획, 드롭인 교체 불가·Matryoshka 메모리 오해 발견
 
 - **[전광판 영상 동기화 검증 (2026-04-07)](docs/experiments/2026-04-07-전광판-영상싱크/)** — 7라운드, 42건 모순, VALID 81%, Executor Collapse 감지
   - [단계별 계측](docs/experiments/2026-04-07-전광판-영상싱크/improvements/01-단계별-계측.md) — 290ms 고정 → 5단계 분해
