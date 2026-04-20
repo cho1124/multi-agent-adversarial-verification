@@ -48,6 +48,7 @@ In an era where AI writes code fast, **human value is shifting from "writing qui
 | LED Video Sync | 04-07 | Claude x 3 | 7 | 42 | 81% |
 | RAG Implementation | 04-08 | Claude / Codex / Gemini | 7 | 40 | 97.5% |
 | RAG Deploy + Runtime | 04-09 | Claude / Codex / Gemini | 2 + 9 TC | 3 | 7/9 PASS |
+| GitScope Design+Impl | 04-20 | Claude / Codex | 3+1 (Design 3R + Impl 1R) | 22 | 47% |
 
 > **From RAG verification:** Pipeline **redesigned 3 times**, core data structures **changed 7 times**, topic derailment **auto-detected and blocked** (including Executor Collapse detection)
 
@@ -202,6 +203,10 @@ Details: [Model Adapter Guide](plugins/adversarial-verify/models/README.md)
   - [Router SPOF](docs/experiments/2026-04-08-RAG-%EA%B5%AC%ED%98%84-%EA%B2%80%EC%A6%9D/improvements/10-%EB%9D%BC%EC%9A%B0%ED%84%B0-SPOF.md) — JSON fallback + semantic validation **(3-model only)**
   - [Cache Key Consistency](docs/experiments/2026-04-08-RAG-%EA%B5%AC%ED%98%84-%EA%B2%80%EC%A6%9D/improvements/11-%EC%BA%90%EC%8B%9C%ED%82%A4-%EC%A0%95%ED%95%A9%EC%84%B1.md) — L1/L2/L3 key insufficiency **(3-model only)**
   - [Agentic Loop Limitation](docs/experiments/2026-04-08-RAG-%EA%B5%AC%ED%98%84-%EA%B2%80%EC%A6%9D/improvements/12-agentic-loop.md) — Single round-trip -> while loop **(3-model only)**
+
+- **[GitScope Design+Impl Verification (2026-04-20)](docs/experiments/2026-04-20-GitScope-Verification/)** — Design 3R + Impl 1R, 22 contradictions, 19 resolved
+  - Original symbol-level history → Code Forensics visualization (Frame Shift LEGITIMATE)
+  - Impl: sync I/O blocking, delimiter collision, contributor dedup — 7 found, 5 fixed
 
 - **[LED Display Video Sync Verification (2026-04-07)](docs/experiments/2026-04-07-%EC%A0%84%EA%B4%91%ED%8C%90-%EC%98%81%EC%83%81%EC%8B%B1%ED%81%AC/)** — 7 rounds, 42 contradictions, 81% VALID, Executor Collapse detected
   - [Stage-by-Stage Instrumentation](docs/experiments/2026-04-07-%EC%A0%84%EA%B4%91%ED%8C%90-%EC%98%81%EC%83%81%EC%8B%B1%ED%81%AC/improvements/01-%EB%8B%A8%EA%B3%84%EB%B3%84-%EA%B3%84%EC%B8%A1.md) — 290ms fixed -> 5-stage decomposition

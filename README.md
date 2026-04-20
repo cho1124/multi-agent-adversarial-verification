@@ -52,6 +52,7 @@ AI가 코드를 빠르게 짜주는 시대에, **사람의 가치는 "빨리 짜
 | PixelForge 코드검증 | 04-14 | Claude / Codex / Gemini | 6 (4R+Meta+Test) | 30건 | VALID 7건 해소 |
 | LLM 추론 성능 최적화 (Cloud) | 04-15 | Claude / Codex / Gemini | 4 | 28건 | 85% |
 | LLM 추론 성능 최적화 (Local) | 04-15 | Claude / Codex / Gemini | 3 | 13건 | 100% |
+| GitScope 설계+구현 검증 | 04-20 | Claude / Codex | 3+1 (설계3R+구현1R) | 22건 | 47% |
 
 > **RAG 설계 검증에서:** 파이프라인 **3회 재설계**, 핵심 데이터 구조 **7회 변경**, 논점 돌리기 **자동 감지·차단** (Executor Collapse 판별 포함)
 
@@ -228,6 +229,10 @@ echo "<프롬프트>" | ollama run llama3.1
 - **[LLM 추론 성능 최적화 검증 (2026-04-15)](docs/experiments/2026-04-15-LLM-추론-성능-최적화/)** — 2회 검증: Cloud 4라운드 28건 + Local 3라운드 13건, 총 41건 모순 전체 해소
   - Cloud: 양자화/경량 모델 교체 불가 판정, 프로파일링→리랭커→프롬프트 캐싱 우선순위 확정
   - Local: 임베딩(BGE-M3)→LLM(gemma4:e4b)→리랭커 교체 계획, 드롭인 교체 불가·Matryoshka 메모리 오해 발견
+
+- **[GitScope 설계+구현 검증 (2026-04-20)](docs/experiments/2026-04-20-GitScope-Verification/)** — 설계 3라운드 + 구현 1라운드, 22건 모순, 19건 해소, Collapse 없음
+  - 원안 "심볼 단위 히스토리 추적" → "Code Forensics 시각화"로 정제 (Frame Shift LEGITIMATE)
+  - 구현 검증: 동기 I/O 블로킹, 구분자 충돌, 기여자 중복 등 7건 발견·5건 수정
 
 - **[전광판 영상 동기화 검증 (2026-04-07)](docs/experiments/2026-04-07-전광판-영상싱크/)** — 7라운드, 42건 모순, VALID 81%, Executor Collapse 감지
   - [단계별 계측](docs/experiments/2026-04-07-전광판-영상싱크/improvements/01-단계별-계측.md) — 290ms 고정 → 5단계 분해
