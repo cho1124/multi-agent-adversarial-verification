@@ -149,4 +149,4 @@ Aria 프로젝트의 환각 방지 4계층 중 **Layer 3 (Adversarial Triad) 가
 - 검증 대상 문서: `https://github.com/cho1124/Aria/blob/main/docs/AI_INTEGRATION_PROPOSAL_DRAFT.md` (Claude 초안, 폐기됨)
 - 적대적 검증 전문: `https://github.com/cho1124/Aria/blob/main/docs/AI_INTEGRATION_VERIFICATION.md`
 - 정식 플랜: `https://github.com/cho1124/Aria/blob/main/docs/AI_INTEGRATION_PLAN.md`
-- Aria 프로젝트 리포: `https://github.com/cho1124/Aria` (private)
+- Aria 프로젝트 리포: https://github.com/cho1124/Aria (public — 2026-05-19 공개 전환, 검증 사례 가치 보존 목적)
